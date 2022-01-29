@@ -4,10 +4,25 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <iostream>
+#include <thread>
+#include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <vector>
+#include <math.h>
+#include <unistd.h>
+#include <sstream>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "interface.h"
+#include "common.h"
+
+using namespace std;
+
+
 
 
 /*
@@ -33,6 +48,8 @@ int main(int argc, char** argv)
     
 		char command[MAX_DATA];
         get_command(command, MAX_DATA);
+        
+        cout << "gotten command" << endl;
 
 		struct Reply reply = process_command(sockfd, command);
 		display_reply(command, reply);
@@ -70,8 +87,34 @@ int connect_to(const char *host, const int port)
 	// ------------------------------------------------------------
 
     // below is just dummy code for compilation, remove it.
-	int sockfd = -1;
-	return sockfd;
+	// int sockfd = -1;
+	// return sockfd;
+	
+	struct addrinfo hints;
+	struct addrinfo *res;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = 0;
+    int status;
+    
+    char portReady[33];
+    sprintf(portReady,"%d",port);
+
+    if ((status = getaddrinfo(host, portReady, &hints, &res)) != 0) {
+        cerr << "getaddrinfo: " << gai_strerror(status) << endl;
+    }
+
+    int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sockfd < 0) {
+        perror("Cannot create socket");
+    }
+
+    if (connect(sockfd, res->ai_addr, res->ai_addrlen) < 0) {
+       perror("Cannot connect");
+    }
+    
+    return sockfd;
 }
 
 /* 
@@ -103,14 +146,46 @@ struct Reply process_command(const int sockfd, char* command)
 	// 
 	// - CREATE/DELETE/JOIN and "<name>" are separated by one space.
 	// ------------------------------------------------------------
-
+	
+	//parse out the information from the user
+	string commandString, nameString;
+	stringstream info;
+	info << command;
+	info >> commandString;
+	getline(info, nameString);
+	
+	//find the correct Command enum
+	Command commandEnum;
+	if (commandString == "CREATE") {
+		commandEnum = CREATE;
+	} else if (commandString == "DELETE") {
+		commandEnum = DELETE;
+	} else if (commandString == "JOIN") {
+		commandEnum = JOIN;
+	} else if (commandString == "LIST") {
+		commandEnum = LIST;
+	} else {
+		commandEnum = UNKNOWN;
+	}
+	
+	char message[sizeof(Command) + 129];
+	memcpy(message, &commandEnum, sizeof(Command));
+    strcpy(message + sizeof(Command), nameString.c_str());
 
 	// ------------------------------------------------------------
 	// GUIDE 2:
 	// After you create the message, you need to send it to the
 	// server and receive a result from the server.
 	// ------------------------------------------------------------
-
+	
+	cout << "sending request" << endl;
+	
+	send(sockfd, message, sizeof(Command)+129, 0);
+	
+	cout << "sent request" << endl;
+	
+	char answer[sizeof(Answer) + 8256];
+	recv(sockfd, answer, sizeof(Answer) + 8256, 0);
 
 	// ------------------------------------------------------------
 	// GUIDE 3:
@@ -155,10 +230,28 @@ struct Reply process_command(const int sockfd, char* command)
 	// ------------------------------------------------------------
 
 	// REMOVE below code and write your own Reply.
+	// struct Reply reply;
+	// reply.status = SUCCESS;
+	// reply.num_member = 5;
+	// reply.port = 1024;
+	// return reply;
+	
+	Answer* parseAnswer = (Answer*) answer;
 	struct Reply reply;
-	reply.status = SUCCESS;
-	reply.num_member = 5;
-	reply.port = 1024;
+	reply.status = parseAnswer->status;
+	
+	if(commandEnum == JOIN) {
+		reply.num_member = parseAnswer->numMembers;
+		reply.port = parseAnswer->portNumber;
+	}
+	
+	if(commandEnum == LIST) {
+		char list[8257];
+		memcpy(list, answer + sizeof(Answer), 8256);
+		list[8256] = '\0';
+		strcpy(reply.list_room, list);
+	}
+	
 	return reply;
 }
 
@@ -176,6 +269,8 @@ void process_chatmode(const char* host, const int port)
 	// to the server using host and port.
 	// You may re-use the function "connect_to".
 	// ------------------------------------------------------------
+	
+	connect_to(host, port);
 
 	// ------------------------------------------------------------
 	// GUIDE 2:
@@ -184,6 +279,11 @@ void process_chatmode(const char* host, const int port)
 	// At the same time, the client should wait for a message from
 	// the server.
 	// ------------------------------------------------------------
+	
+	while(true) {
+		cout << "there isn't a chatroom yet" << endl;
+		return;
+	}
 	
     // ------------------------------------------------------------
     // IMPORTANT NOTICE:
