@@ -9,6 +9,7 @@
 #include <string.h>
 #include "interface.h"
 #include "common.h"
+#include "datastructs.h"
 
 #include <iostream>
 #include <thread>
@@ -18,11 +19,18 @@
 #include <vector>
 #include <math.h>
 #include <unistd.h>
+#include <map>
+
 
 using namespace std;
 
 int startServer(const int portNumber);
-void processCommand(const int clientSocket);
+int acceptRequest(const int sockfd);
+void processCommand(const int clientSocket, PortFinder* portFinder, map<string, Room>* rooms);
+bool findRoomName(/*FILE* stream,*/ char* name);
+void addToRoomsFile(FILE* stream, char* name);
+void roomThread(const int port, PortFinder* portFinder);
+void startRooms();
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -31,33 +39,31 @@ int main(int argc, char** argv) {
 		exit(1);
 	}
 	
+	PortFinder portFinder(atoi(argv[1]));
+	map<string, Room> rooms;
+	
 	int sockfd = startServer(atoi(argv[1]));
 	
-	struct sockaddr_storage their_addr;
-	socklen_t sin_size;
-	
 	while(true) {
-		sin_size = sizeof their_addr; 
-		int client_socket = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+		int client_socket = acceptRequest(sockfd);
 		if (client_socket == -1) {
-			perror("accept");
-			continue;
+		    perror("accept");
+		    continue;
 		}
-		
 		cout << "accepted a request" << endl;
 		
-		thread t = thread(processCommand, client_socket);
+		thread t = thread(processCommand, client_socket, &portFinder, &rooms);
 		t.detach();
 	}
     
     return 0;
 }
 
-void processCommand(const int clientSocket) {
+void processCommand(const int clientSocket, PortFinder* portFinder, map<string, Room>* rooms) {
     char list[8256];
     FILE* roomsRead;
     FILE* roomsWrite;
-    roomsRead = fopen("rooms.dat", "r");
+    //roomsRead = fopen("rooms.dat", "r");
     roomsWrite = fopen("rooms.dat", "a");
     
     //get command from client
@@ -68,20 +74,59 @@ void processCommand(const int clientSocket) {
     struct Answer answer;
     
     enum Command* commandEnum = (Command*) command;
-    if (*commandEnum == CREATE) {
-        //check if room exists
-        
-        fseek(roomsRead, 0, SEEK_SET);
-        
-        
-    // } else if (*commandEnum == DELETE) {
-        
-    // } else if (*commandEnum == JOIN) {
-        
-    // } else if (*commandEnum == LIST) {
+    if (*commandEnum == UNKNOWN) {
+        answer.status = FAILURE_UNKNOWN;
+    } else if (*commandEnum == LIST) {
+    
         
     } else {
-        answer.status = FAILURE_UNKNOWN;
+        //parse out name information
+        char name[127];
+        memcpy(name, command + sizeof(Command), 126);
+        name[126] = '\0';
+        
+        if (name[0] == '\0') {
+            // the name isn't valid
+            answer.status = FAILURE_INVALID;
+        } else {
+            string nameString = name;
+            bool roomFound;
+            auto roomIter = rooms->find(nameString);
+            if (roomIter == rooms->end()) {
+                roomFound = false;
+                cout << "roomfound false" << endl;
+            } else {
+                roomFound = true;
+                cout << "roomfound true" << endl;
+            }
+            //roomFound = rooms->count(nameString);
+            cout << "roomFound = " << roomFound << endl;
+        
+            //do what is asked by the command
+            if (*commandEnum == CREATE) {
+                if (roomFound) {
+                    answer.status = FAILURE_ALREADY_EXISTS;
+                } else {
+                    // we create the room
+                    int newPort = portFinder->newPort();
+                    Room newRoom(name, newPort);
+                    rooms->insert({nameString, newRoom});
+                    
+                
+                    //now we pass it to a thread to open the room
+                   thread t = thread(roomThread, newPort, portFinder);
+                   t.detach();
+                   answer.status = SUCCESS;
+                }
+        
+            // } else if (*commandEnum == DELETE) {
+        
+            // } else if (*commandEnum == JOIN) {
+        
+            } else {
+                answer.status = FAILURE_UNKNOWN;
+            }
+        }
     }
     
     //answer.status = FAILURE_UNKNOWN;
@@ -94,6 +139,22 @@ void processCommand(const int clientSocket) {
     // }
     send(clientSocket, response, sizeof(Answer) + 8256, 0);
     //cout << "Sent info back to client" << endl;
+}
+
+void roomThread(const int port, PortFinder* portFinder) {
+    cout << "we opened the room thread" << endl;
+}
+
+
+
+int acceptRequest(const int sockfd) {
+    struct sockaddr_storage their_addr;
+	socklen_t sin_size;
+	
+	sin_size = sizeof their_addr; 
+	int client_socket = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+	
+	return client_socket;
 }
 
 // starts the server to get it ready to accept requests from clients
