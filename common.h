@@ -26,4 +26,12 @@ struct Answer {
     int numMembers;
 };
 
+struct Chat {
+    int clientNumber;
+    
+    Chat(int number) {
+        clientNumber = number;
+    }
+};
+
 #endif // COMMON_H_

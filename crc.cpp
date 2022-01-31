@@ -19,6 +19,7 @@
 #include <string.h>
 #include "interface.h"
 #include "common.h"
+#include <fcntl.h>
 
 using namespace std;
 
@@ -49,7 +50,7 @@ int main(int argc, char** argv)
 		char command[MAX_DATA];
         get_command(command, MAX_DATA);
         
-        cout << "gotten command" << endl;
+        //cout << "gotten command" << endl;
 
 		struct Reply reply = process_command(sockfd, command);
 		display_reply(command, reply);
@@ -178,11 +179,11 @@ struct Reply process_command(const int sockfd, char* command)
 	// server and receive a result from the server.
 	// ------------------------------------------------------------
 	
-	cout << "sending request" << endl;
+	//cout << "sending request" << endl;
 	
 	send(sockfd, message, sizeof(Command)+129, 0);
 	
-	cout << "sent request" << endl;
+	//cout << "sent request" << endl;
 	
 	char answer[sizeof(Answer) + 8256];
 	recv(sockfd, answer, sizeof(Answer) + 8256, 0);
@@ -270,7 +271,25 @@ void process_chatmode(const char* host, const int port)
 	// You may re-use the function "connect_to".
 	// ------------------------------------------------------------
 	
-	connect_to(host, port);
+	int sockfd = connect_to(host, port);
+	
+	//get our clientNumber
+	const int* clientNumber;
+	Chat firstChat(-1);
+	
+	char firstMessage[sizeof(Chat)];
+	memcpy(firstMessage, &firstChat, sizeof(Chat));
+	
+	send(sockfd, firstMessage, sizeof(Chat), 0);
+	
+	recv(sockfd, firstMessage, sizeof(Chat), 0);
+	
+	clientNumber = (int*) firstMessage;
+	Chat ourChat(*clientNumber);
+	
+	//set fd for socket to nonblocking so we can recv and not block
+	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+	
 
 	// ------------------------------------------------------------
 	// GUIDE 2:
@@ -281,8 +300,21 @@ void process_chatmode(const char* host, const int port)
 	// ------------------------------------------------------------
 	
 	while(true) {
-		cout << "there isn't a chatroom yet" << endl;
-		return;
+		char input[1048] = "";
+		get_message(input, 1048);
+		
+		if (input[0] != '\0') {
+			char message[sizeof(Chat) + 1048];
+			
+			memcpy(message, &ourChat, sizeof(Chat));
+    		strcpy(message + sizeof(Chat), input);
+    		send(sockfd, message, sizeof(Chat) + 1048, 0);
+		}
+		
+		int recieved = recv(sockfd, input, sizeof(Chat) + 1048, 0);
+		if (recieved != -1) {
+			display_message(input);
+		}
 	}
 	
     // ------------------------------------------------------------

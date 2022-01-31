@@ -3,6 +3,7 @@
 
 #include <forward_list>
 #include <algorithm>
+#include <mutex>
 
 using namespace std;
 
@@ -10,6 +11,7 @@ struct PortFinder {
     int nextPort;
     int firstPort;
     forward_list<int> reopenedPorts;
+    mutex pfLock;
     
     PortFinder(const int currentPort) {
         firstPort = currentPort;
@@ -21,17 +23,23 @@ struct PortFinder {
     }
     
     int newPort() {
+        
+        int port;
+        unique_lock<mutex> lock(pfLock);
+        
         if (reopenedPorts.empty()) {
-            nextPort += 1;
-            return nextPort;
+            port = nextPort;
+            nextPort++;
         } else {
             int port = reopenedPorts.front();
             reopenedPorts.pop_front();
-            return port;
         }
+        
+        
     }
     
     void closePort(int port) {
+        unique_lock<mutex> lock(pfLock);
         reopenedPorts.remove(port);
     }
 };
