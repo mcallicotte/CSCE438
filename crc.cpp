@@ -61,6 +61,7 @@ int main(int argc, char** argv)
 			process_chatmode(argv[1], reply.port);
 		}
 	
+		shutdown(sockfd, SHUT_RDWR);
 		close(sockfd);
     }
 
@@ -183,10 +184,12 @@ struct Reply process_command(const int sockfd, char* command)
 	
 	send(sockfd, message, sizeof(Command)+129, 0);
 	
-	//cout << "sent request" << endl;
+	cout << "sent request" << endl;
 	
 	char answer[sizeof(Answer) + 8256];
 	recv(sockfd, answer, sizeof(Answer) + 8256, 0);
+	
+	cout << "revcieved request" << endl;
 
 	// ------------------------------------------------------------
 	// GUIDE 3:
@@ -271,6 +274,8 @@ void process_chatmode(const char* host, const int port)
 	// You may re-use the function "connect_to".
 	// ------------------------------------------------------------
 	
+	cout << "welcome to process_chatmode" << endl;
+	
 	int sockfd = connect_to(host, port);
 	
 	//get our clientNumber
@@ -280,15 +285,19 @@ void process_chatmode(const char* host, const int port)
 	char firstMessage[sizeof(Chat)];
 	memcpy(firstMessage, &firstChat, sizeof(Chat));
 	
+	cout << "asking for client number" << endl;
 	send(sockfd, firstMessage, sizeof(Chat), 0);
 	
 	recv(sockfd, firstMessage, sizeof(Chat), 0);
+	cout << "recieved client number" << endl;
 	
 	clientNumber = (int*) firstMessage;
 	Chat ourChat(*clientNumber);
+	cout << "clientNumber = " << *clientNumber << endl;
 	
 	//set fd for socket to nonblocking so we can recv and not block
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+	fcntl(0, F_SETFL, O_NONBLOCK);
 	
 
 	// ------------------------------------------------------------
@@ -298,10 +307,16 @@ void process_chatmode(const char* host, const int port)
 	// At the same time, the client should wait for a message from
 	// the server.
 	// ------------------------------------------------------------
-	
+	bool closed = false;
 	while(true) {
-		char input[1048] = "";
+		//cout << "Start of while loop" << endl;
+		if(closed) {
+			continue;
+		}
+		
+		char input[1048] = "\0";
 		get_message(input, 1048);
+		//cout << "finished get message" << endl;
 		
 		if (input[0] != '\0') {
 			char message[sizeof(Chat) + 1048];
@@ -311,10 +326,24 @@ void process_chatmode(const char* host, const int port)
     		send(sockfd, message, sizeof(Chat) + 1048, 0);
 		}
 		
+		//cout << "input didn't block" << endl;
+		
 		int recieved = recv(sockfd, input, sizeof(Chat) + 1048, 0);
 		if (recieved != -1) {
 			display_message(input);
+			display_message("\n");
+			
+			Chat* chat = (Chat*) input;
+			if (strcmp(input, "SERVER: DELETING ROOM") == 0) {
+				cout << "actually ending exectuion" << endl;
+				shutdown(sockfd, SHUT_RDWR);
+				close(sockfd);
+				closed = true;
+				
+			}
 		}
+		
+		//cout << "output didn't block" << endl;
 	}
 	
     // ------------------------------------------------------------

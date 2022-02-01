@@ -116,8 +116,11 @@ void get_command(char* comm, const int size)
  */
 void get_message(char* message, const int size)
 {
+    //printf("%s", "get message starts\n");
     fgets(message, size, stdin);
+    //printf("%s", "fgets done\n");
     message[strlen(message) - 1] = '\0';
+    //printf("%s", "get message ends\n");
 }
 
 

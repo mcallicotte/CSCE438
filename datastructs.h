@@ -23,7 +23,6 @@ struct PortFinder {
     }
     
     int newPort() {
-        
         int port;
         unique_lock<mutex> lock(pfLock);
         
@@ -35,7 +34,7 @@ struct PortFinder {
             reopenedPorts.pop_front();
         }
         
-        
+        return port;
     }
     
     void closePort(int port) {
