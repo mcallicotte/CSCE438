@@ -33,6 +33,7 @@ void roomMainThread(const int port, PortFinder* portFinder);
 void roomClientThread(const int clientSocket, const vector<int>* clientSockets, vector<thread>* threads);
 void roomBroadcastThread(char* chatMessage, const vector<int>* clientSockets);
 int connect_to(const char *host, const int port);
+int is_valid_fd(int fd);
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -52,7 +53,7 @@ int main(int argc, char** argv) {
 		    perror("accept");
 		    continue;
 		}
-		cout << "accepted a request" << endl;
+		//cout << "accepted a request" << endl;
 		
 		thread t = thread(processCommand, client_socket, &portFinder, &rooms);
 		t.detach();
@@ -62,11 +63,11 @@ int main(int argc, char** argv) {
 }
 
 void processCommand(const int clientSocket, PortFinder* portFinder, map<string, Room>* rooms) {
-    char list[8256];
+    char list[8257];
     FILE* roomsRead;
     FILE* roomsWrite;
     //roomsRead = fopen("rooms.dat", "r");
-    roomsWrite = fopen("rooms.dat", "a");
+    //roomsWrite = fopen("rooms.dat", "a");
     
     //get command from client
     char command[sizeof(Command) + 129];
@@ -79,8 +80,28 @@ void processCommand(const int clientSocket, PortFinder* portFinder, map<string, 
     if (*commandEnum == UNKNOWN) {
         answer.status = FAILURE_UNKNOWN;
     } else if (*commandEnum == LIST) {
-    
+        int listIndex = 0;
+        string errorMessage = "and more...";
         
+        if (rooms->empty()) {
+            char* message = "empty";
+            strcpy(list, message);
+        } else {
+            for(auto i = rooms->begin(); i != rooms->end(); i++) {
+                string roomName = i->first;
+                if (listIndex + roomName.size() + errorMessage.size() > 8256) {
+                    roomName = errorMessage;
+                }
+            
+                const char* nameArray = roomName.c_str();
+                strcpy(list + (listIndex * sizeof(char)), nameArray);
+                listIndex += roomName.size();
+                list[listIndex] = ',';
+                listIndex++;
+            }
+        
+            list[listIndex - 1] = '\0';
+        }
     } else {
         //parse out name information
         char name[127];
@@ -96,13 +117,13 @@ void processCommand(const int clientSocket, PortFinder* portFinder, map<string, 
             auto roomIter = rooms->find(nameString);
             if (roomIter == rooms->end()) {
                 roomFound = false;
-                cout << "roomfound false" << endl;
+                //cout << "roomfound false" << endl;
             } else {
                 roomFound = true;
-                cout << "roomfound true" << endl;
+                //cout << "roomfound true" << endl;
             }
             //roomFound = rooms->count(nameString);
-            cout << "roomFound = " << roomFound << endl;
+            //cout << "roomFound = " << roomFound << endl;
         
             //do what is asked by the command
             if (*commandEnum == CREATE) {
@@ -111,7 +132,7 @@ void processCommand(const int clientSocket, PortFinder* portFinder, map<string, 
                 } else {
                     // we create the room
                     int newPort = portFinder->newPort();
-                    cout << "new port we are using = " << newPort;
+                    //cout << "new port we are using = " << newPort;
                     Room newRoom(name, newPort);
                     rooms->insert({nameString, newRoom});
                     
@@ -148,7 +169,7 @@ void processCommand(const int clientSocket, PortFinder* portFinder, map<string, 
                     answer.status = FAILURE_NOT_EXISTS;
                 } else {
                     int masterPort = roomIter->second.mainPort;
-                    cout << "we  think the port number is " << endl;
+                    //cout << "we  think the port number is " << endl;
                     Chat join(-3);
                     char message[sizeof(Chat)];
                     memcpy(message, &join, sizeof(Chat));
@@ -158,18 +179,18 @@ void processCommand(const int clientSocket, PortFinder* portFinder, map<string, 
                     send(newSocket, message, sizeof(Chat), 0);
                     
                     char* clientNumber[sizeof(Chat)];
-                    cout << "waiting to recieve from room thread" << endl;
+                    //cout << "waiting to recieve from room thread" << endl;
                     recv(newSocket, clientNumber, sizeof(Chat), 0);
-                    cout << "recieved from room thread" << endl;
+                    //cout << "recieved from room thread" << endl;
                     
                     answer.portNumber = masterPort;
                     // int number = *(int*) clientNumber;
                     // answer.numMembers = number;
                     Chat* chatResponse = (Chat*) clientNumber;
                     answer.numMembers = chatResponse->clientNumber;
-                    cout << "the problem wasn't the numMembers" << endl;
+                    //cout << "the problem wasn't the numMembers" << endl;
                     answer.status = SUCCESS;
-                    cout << "finished the join function" << endl;
+                    //cout << "finished the join function" << endl;
                 }
             } else {
                 answer.status = FAILURE_UNKNOWN;
@@ -180,43 +201,44 @@ void processCommand(const int clientSocket, PortFinder* portFinder, map<string, 
     //answer.status = FAILURE_UNKNOWN;
     
     //send back a response to the client
-    char response[sizeof(Answer) + 8256];
+    char response[sizeof(Answer) + 8257];
     memcpy(response, &answer, sizeof(Answer));
-    // if (commandEnum == LIST) {
-    //     strcpy(response + sizeof(Answer), list);
-    // }
+    if (*commandEnum == LIST) {
+        strcpy(response + sizeof(Answer), list);
+    }
     send(clientSocket, response, sizeof(Answer) + 8256, 0);
     //cout << "Sent info back to client" << endl;
 }
 
 void roomMainThread(const int port, PortFinder* portFinder) {
-    cout << "we opened the room thread" << endl;
+    //cout << "we opened the room thread" << endl;
     vector<int> clientSockets;
     vector<thread> clientThreads;
     
-    cout << "port we are using = " << port << endl;
+    //cout << "port we are using = " << port << endl;
     int sockfd = startServer(port);
 	
-	cout << "while true loop time" << endl;
+	//cout << "while true loop time" << endl;
 	while(true) {
 		int client_socket = acceptRequest(sockfd);
 		if (client_socket == -1) {
 		    perror("accept");
 		    continue;
 		}
-		cout << "accepted a request - Room " << port << endl;
+		//cout << "accepted a request - Room " << port << endl;
 		
 		char request[sizeof(Chat) + 1048];
 		recv(client_socket, request, sizeof(Chat) + 1048, 0);
 		
-		cout << "room " << port << " - recieved a request" << endl;
+		//cout << "room " << port << " - recieved a request" << endl;
 		
 		Chat* chat = (Chat*) request;
 		if (chat->clientNumber == -2) {
 		    //we would delete the room
 		    //broadcast the warning message and make sure it goes through
-		    cout << "closing room " << port << endl;
+		    //cout << "closing room " << port << endl;
 		    thread t = thread(roomBroadcastThread, request, &clientSockets);
+		    //cout << "roomMainThread called broadcast" << endl;
 		    t.join();
 		    
 		    // then we can destroy all child threads
@@ -225,27 +247,27 @@ void roomMainThread(const int port, PortFinder* portFinder) {
 		    }
 		    
 		    //we end this thread by just ending its execution
-		    cout << "room closing!" << endl;
+		    //cout << "room closing!" << endl;
 		    return;
 		} else if (chat->clientNumber == -1) {
 		    //we will respond with the clientNumber and add to vector
-		    cout << "    client add request" << endl;
+		    //cout << "    client add request" << endl;
 		    clientSockets.push_back(client_socket);
 		    Chat firstChat(clientSockets.size() - 1);
 		    
 		    char* message[sizeof(Chat)];
 		    memcpy(message, &firstChat, sizeof(Chat));
 		    send(client_socket, message, sizeof(Chat), 0);
-		    cout << "    sent clientNumber" << endl;
+		    //cout << "    sent clientNumber" << endl;
 		    clientThreads.push_back(thread(roomClientThread, client_socket, &clientSockets, &clientThreads));
 		    clientThreads.back().detach();
 		} else if (chat->clientNumber == -3) {
 		    // we are sending back what our number of members are
-		    cout << "   client joining" << endl;
+		    //cout << "   client joining" << endl;
 		    Chat count(clientSockets.size());
 		    char* message[sizeof(Chat)];
 		    memcpy(message, &count, sizeof(Chat));
-		    cout << "    about to send message back to main server" << endl;
+		    //cout << "    about to send message back to main server" << endl;
 		    send(client_socket, message, sizeof(Chat), 0);
 		} else {
 		    cout << "we don't know what to do with that number - " << chat->clientNumber << endl;
@@ -254,22 +276,25 @@ void roomMainThread(const int port, PortFinder* portFinder) {
 }
 
 void roomClientThread(const int clientSocket, const vector<int>* clientSockets, vector<thread>* threads) {
-    cout << "started a roomClientThread" << endl;
-    while(true) {
+    //cout << "started a roomClientThread" << endl;
+    while(is_valid_fd(clientSocket)) {
         char request[sizeof(Chat) + 1048];
         recv(clientSocket, request, sizeof(Chat) + 1048, 0);
-        threads->push_back(thread(roomBroadcastThread, request, clientSockets));
-        threads->back().detach();
+        thread t = (thread(roomBroadcastThread, request, clientSockets));
+        //cout << "roomClientThread " << clientSocket << " called broadcast" << endl;
+        t.join();
     }
+    //cout << "roomClientThread closing... " << clientSocket << endl;
 }
 
 void roomBroadcastThread(char* chatMessage, const vector<int>* clientSockets) {
-    cout << "    starting broadcast" << endl;
     Chat* chat = (Chat*) chatMessage;
     
     char message[1048];
     memcpy(message, chatMessage + sizeof(Chat), 1048);
     message[1047] = '\0';
+    
+    //cout << "    starting broadcast ... from " << chat->clientNumber << endl;
     
     for(int i = 0; i < clientSockets->size(); i++) {
         if (i != chat->clientNumber) {
@@ -277,15 +302,15 @@ void roomBroadcastThread(char* chatMessage, const vector<int>* clientSockets) {
         }
     }
     
-    if(chat->clientNumber == 0) {
-        cout << "we are closing the connections!" << endl;
+    if(chat->clientNumber < 0) {
+       // cout << "we are closing the connections!" << endl;
         for (int i = 0; i < clientSockets->size(); i++) {
             shutdown(clientSockets->at(i), SHUT_RDWR);
             close(clientSockets->at(i));
         }
     }
     
-    cout << "    ending broadcast" << endl;
+    //cout << "    ending broadcast" << endl;
     
 }
 
@@ -381,4 +406,8 @@ int startServer(const int portNumber) {
     }
     
     return sockfd;
+}
+
+int is_valid_fd(int fd) {
+    return fcntl(fd, F_GETFL) != -1 || errno != EBADF;
 }

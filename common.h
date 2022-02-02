@@ -8,6 +8,7 @@ enum Command {
     DELETE,
     JOIN,
     LIST,
+    QUIT,
     UNKNOWN
 };
 
