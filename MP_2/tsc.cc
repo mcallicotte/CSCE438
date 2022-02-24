@@ -4,6 +4,10 @@
 #include <grpc++/grpc++.h>
 #include "client.h"
 
+#include "sns.grpc.pb.h"
+#include <iostream>
+#include <sstream>
+
 class Client : public IClient
 {
     public:
@@ -23,7 +27,7 @@ class Client : public IClient
         
         // You can have an instance of the client stub
         // as a member variable.
-        //std::unique_ptr<NameOfYourStubClass::Stub> stub_;
+        std::unique_ptr<csce438::SNSService::Stub> stub_;
 };
 
 int main(int argc, char** argv) {
@@ -63,6 +67,9 @@ int Client::connectTo()
     // a member variable in your own Client class.
     // Please refer to gRpc tutorial how to create a stub.
 	// ------------------------------------------------------------
+	
+	stub_ = csce438::SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
+	std::cout << "client ran connectTo" << std::endl;
 
     return 1; // return 1 if success, otherwise return -1
 }
@@ -82,6 +89,9 @@ IReply Client::processCommand(std::string& input)
     // TIMELINE
 	//
 	// ------------------------------------------------------------
+	
+	std::stringstream sstream;
+	
 	
     // ------------------------------------------------------------
 	// GUIDE 2:

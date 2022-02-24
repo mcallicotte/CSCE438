@@ -14,6 +14,13 @@
 
 #include "sns.grpc.pb.h"
 
+#include <iostream>
+#include <pthread.h>
+#include <fstream>
+#include <vector>
+
+#include <database.h>
+
 using google::protobuf::Timestamp;
 using google::protobuf::Duration;
 using grpc::Server;
@@ -27,6 +34,12 @@ using csce438::Message;
 using csce438::Request;
 using csce438::Reply;
 using csce438::SNSService;
+
+// const std::string FILE_PATH = "/db/";
+// const std::string CLIENT_LIST = FILE_PATH + "clientlist.txt";
+// const std::string TIMELINE_PATH = FILE_PATH + "tl/";
+// const std::string TIMELINE_FILE_END = "tl.txt";
+
 
 class SNSServiceImpl final : public SNSService::Service {
   
@@ -83,6 +96,19 @@ void RunServer(std::string port_no) {
   // which would start the server, make it listen on a particular
   // port number.
   // ------------------------------------------------------------
+  
+  std::string serverAddress("dns:///localhost:" + port_no);
+  SNSServiceImpl service;
+  
+  int portInt = std::stoi(port_no);
+  
+  ServerBuilder builder;
+  builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials(), &portInt);
+  builder.RegisterService(&service);
+  std::unique_ptr<Server> server(builder.BuildAndStart());
+  std::cout << "server ran its start sequence" << std::endl;
+  server->Wait();
+  
 }
 
 int main(int argc, char** argv) {
