@@ -2,11 +2,14 @@
 #include <fstream>
 #include <string>
 #include <map>
+#include <deque>
 
 const std::string FILE_PATH = "/db/";
 const std::string CLIENT_LIST = FILE_PATH + "clientlist.txt";
 const std::string TIMELINE_PATH = FILE_PATH + "tl/";
 const std::string TIMELINE_FILE_END = "tl.txt";
+const int POST_SIZE = 256;
+const int MAX_REPRINT_TIMELINE = 20;
 
 class SafeFile {
   private:
@@ -46,6 +49,8 @@ class Client {
 			username = name;
 			timelineFile(TIMELINE_PATH + username + TIMELINE_FILE_END);
 		}
+
+		SafeFile* getFile() { return &timelineFile; }
 };
 
 std::map<std::string, Client> clientMap;
@@ -53,13 +58,46 @@ SafeFile clientList(CLIENT_LIST);
 
 void startupServer() {
 	
-	clientList.lockFile();
-	clientList.getFileStream().seekg(ios_base::beg);
+	clientList.getFile()->lockFile();
+	clientList.getFile()->getFileStream().seekg(ios_base::beg);
 	while (!clientList.getFileStream().eof()) {
 		std::string username;
-		username << clientList.getFileStream();
+		username << clientList.getFile()->getFileStream();
 		Client addClient(username);
 		clientMap.insert({username, addClient});
 	}
-	clientList.unlockFile();
+	clientList.getFile()->unlockFile();
 }
+
+class TimelinePrinter {
+	private:
+		std::deque<std::string> timeline;
+		int size;
+		Client* client;
+
+		void addToTimeline() {
+			if (size == MAX_REPRINT_TIMELINE) {
+				timeline.pop_back();
+			}
+
+			char[POST_SIZE] buffer;
+			client->getFile()->getFileStream().getline(buffer, POST_SIZE);
+			std::string post = buffer;
+
+			timeline.push_front(post);
+			++size;
+		}
+	
+	public:
+		TimelinePrinter(std::string clientName): timeline{}, size{0} {
+			Client* client = &clientMap.find(clientName);
+			client->getFile()->lockFile();
+			client->getFile()->getFileStream().seekg(ios_base::beg);
+			while (!client->getFile()->getFileStream().eof()) {
+				addToTimeline();
+			}
+			client->getFile()->unlockFile();
+		}
+
+		std::deque<std::string> getTimeline() = { return timeline; }
+};
