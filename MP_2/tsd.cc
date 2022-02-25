@@ -77,18 +77,25 @@ class SNSServiceImpl final : public SNSService::Service {
     // or already taken
     // ------------------------------------------------------------
 
-    std::string username = request.get_username();
+    std::string username = request->username();
 
     auto clientIterator = clientMap.find(username);
 
-    if (clientIterator != clientMap.end()) {
-      std::cout << "added user " << username << "to the map and files" << std::endl;
+    if (clientIterator == clientMap.end()) {
+      std::cout << "adding user " << username << " to the map and files" << std::endl;
       
-      clientMap.insert(std::pair<std::string, Client*>(username, new Client(username)));
+      //std::cout << "creating a new client" << std::endl;
+      Client* newClient = new Client(username);
+      //std::cout << "inserting into map right now" << std::endl;
+      clientMap.insert(std::pair<std::string, Client*>(username, newClient));
+      
+      // clientMap.insert(std::pair<std::string, Client*>(username, new Client(username)));
+      //std::cout << "successfully added to the map" << std::endl;
       clientList.write(username + "\n"); 
+      //std::cout << "successfully wrote" << std::endl;
     }
 
-    std::cout << "added user " << username << "to the map and files" << std::endl;
+    printClientMap();
     return Status::OK;
   }
 
@@ -123,7 +130,7 @@ void RunServer(std::string port_no) {
   builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials(), &portInt);
   builder.RegisterService(&service);
   std::unique_ptr<Server> server(builder.BuildAndStart());
-  std::cout << "server ran its start sequence" << std::endl;
+  std::cout << "server ran its start sequence." << std::endl;
   server->Wait();
   
 }
