@@ -69,7 +69,7 @@ int Client::connectTo()
 	// ------------------------------------------------------------
 	
 	stub_ = csce438::SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
-	std::cout << "client ran connectTo" << std::endl;
+	//std::cout << "client ran connectTo" << std::endl;
 
     csce438::Request loginRequest;
     loginRequest.set_username(username);
@@ -80,7 +80,7 @@ int Client::connectTo()
 
     grpc::Status status = stub_->Login(&context, loginRequest, &loginReply);
 
-    std::cout << "tried to log in" << std::endl;
+    //std::cout << "tried to log in" << std::endl;
 
     return 1; // return 1 if success, otherwise return -1
 }
@@ -102,8 +102,43 @@ IReply Client::processCommand(std::string& input)
 	// ------------------------------------------------------------
 	
 	std::stringstream sstream;
-	
-	
+    sstream << input;
+
+    std::string command, username = "";
+    sstream >> command;
+    sstream >> othername;
+
+    csce438::Request commandRequest;
+    commandRequest.set_username(username);
+    
+
+    csce438::Reply commandReply;
+
+    grpc::ClientContext context;
+
+    grpc::Status status;
+
+    //commandRequest.set_arguments(command);
+    
+
+    if (command == "FOLLOW" || command == "UNFOLLOW") {
+        commandRequest.set_arguments(othername);
+        if (command == "FOLLOW") {
+            status = stub_->Follow(&context, commandRequest, &commandReply);
+        } else {
+            status = stub_->UnFollow(&context, commandRequest, &commandReply);
+        }
+    } else {
+        if (command == "LIST") {
+            status = stub_->List(&context, commandRequest, &commandReply);
+        } else if (command == "TIMELINE") {
+            // this will run timeline
+            std::cout << "timeline is not implemented" << std::endl;
+        } else {
+            status = grpc::Status::CANCELLED;  // failure_invalid_command
+        }
+    }
+
     // ------------------------------------------------------------
 	// GUIDE 2:
 	// Then, you should create a variable of IReply structure
@@ -111,6 +146,29 @@ IReply Client::processCommand(std::string& input)
 	// the result. Finally you can finish this function by returning
     // the IReply.
 	// ------------------------------------------------------------
+
+    IReply ir;
+
+    ir.grpc_status = status;
+    if (status == grpc::Status::OK) {
+        comm_status = SUCCESS;
+    } else if (status == grpc::Status::FAILED_PRECONDICTION) {
+        comm_status = FAILURE_NOT_EXISTS;
+    } else if (status == grpc::Status::ALREADY_EXISTS) {
+        comm_status = FAILURE_ALREADY_EXISTS;
+    } else if (status == grpc::Status::INVALID_ARGUMENT) {
+        comm_status = FAILURE_INVALID_USERNAME;
+    } else if (status == grpc::Status::CANCELLED) {
+        comm_status = FAILURE_INVALID;
+    } else {
+        comm_status = FAILURE_UNKNOWN;
+    }
+
+    if (command == "LIST") {
+        //add the list stuff to the ireplay
+    }
+
+    return ir;
     
 	// ------------------------------------------------------------
     // HINT: How to set the IReply?
@@ -134,9 +192,6 @@ IReply Client::processCommand(std::string& input)
     // For the command "LIST", you should set both "all_users" and 
     // "following_users" member variable of IReply.
     // ------------------------------------------------------------
-    
-    IReply ire;
-    return ire;
 }
 
 void Client::processTimeline()

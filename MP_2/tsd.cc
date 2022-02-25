@@ -52,7 +52,8 @@ class SNSServiceImpl final : public SNSService::Service {
     // LIST request from the user. Ensure that both the fields
     // all_users & following_users are populated
     // ------------------------------------------------------------
-    return Status::OK;
+    std::cout << "ran list - not implemented" << std::endl;
+    return Status::UNIMPLEMENTED;
   }
 
   Status Follow(ServerContext* context, const Request* request, Reply* reply) override {
@@ -61,7 +62,27 @@ class SNSServiceImpl final : public SNSService::Service {
     // request from a user to follow one of the existing
     // users
     // ------------------------------------------------------------
-    return Status::OK; 
+    
+    std::string username = request->username();
+    std::string fname = request->arguments();
+
+    if (username == fname) {
+      return Status::ALREADY_EXISTS;
+    }
+
+    auto iter = clientMap.find(fname);
+    if (iter == clientMap.end()) {
+      return Status::FAILED_PRECONDICTION;
+    }
+    
+    Client* client = iter->second;
+    bool status = client->addFollower()
+
+    if (status) {
+      return Status::OK;
+    } else {
+      return Status::ALREADY_EXISTS;
+    } 
   }
 
   Status UnFollow(ServerContext* context, const Request* request, Reply* reply) override {
@@ -70,7 +91,30 @@ class SNSServiceImpl final : public SNSService::Service {
     // request from a user to unfollow one of his/her existing
     // followers
     // ------------------------------------------------------------
-    return Status::OK;
+    // std::cout << "ran unfollow - not implemented" << std::endl;
+    // return Status::UNIMPLEMENTED;
+
+    std::string username = request->username();
+    std::string fname = request->arguments();
+
+    if (username == fname) {
+      return Status::INVALID_ARGUMENT;
+    }
+
+    auto iter = clientMap.find(fname);
+    if (iter == clientMap.end()) {
+      return Status::FAILED_PRECONDICTION;
+    }
+    
+    Client* client = iter->second;
+    bool status = client->removeFollower()
+
+    if (status) {
+      return Status::OK;
+    } else {
+      return Status::INVALID_ARGUMENT;
+    } 
+
   }
   
   Status Login(ServerContext* context, const Request* request, Reply* reply) override {

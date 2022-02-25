@@ -101,9 +101,11 @@ class Client {
 		std::string username;
 		SafeFile timelineFile;
 		SafeFile followerFile;
+		std::map<std::string, int> followerMap;
+		int followerCount = 0;
 		
 	public:
-		Client(std::string name) {
+		Client(std::string name): followerList{} {
 			//std::cout << "    welcome to client constructor" << std::endl;
 			username = name;
 			std::string fileName = TIMELINE_PATH + username + TIMELINE_FILE_END;
@@ -112,6 +114,21 @@ class Client {
 			//std::cout << "    leaving client constructor" << std::endl;
 			fileName = FOLLOWERS_PATH + username + FOLLOWERS_FILE_END;
 			followerFile = SafeFile(fileName);
+
+			//start the follower map
+			followerFile.lockFile();
+			followerFile.fileStreamIn.seekg(std::ios_base::beg);
+			int lineCount = 1;
+			while (!followerFile.fileStreamIn.eof()) {
+				char buffer[MAX_USERNAME];
+				followerFile.getline(buffer, POST_SIZE);
+				std::string fname = buffer;
+				followerMap.insert({fname, lineCount});
+				++lineCount;
+			}
+			followerFile.unlockFile();
+
+			followerCount = followerMap.size();
 		}
 
 		SafeFile* getTimelineFile() { return &timelineFile; }
@@ -121,6 +138,35 @@ class Client {
 		~Client() {
 			timelineFile.closeStreams();
 			followerFile.closeStreams();
+
+			followerFile = SafeFile(FOLLOWERS_PATH + username + FOLLOWERS_FILE_END, 1);
+			
+			for (auto i = follwerMap.begin(); i != followerMap.end(); i++) {
+				followerFile.write(i->first + "\n");
+			}
+		}
+
+		bool addFollower(std::string fname) {
+			if (followerMap.find(fname) == followerMap.end()) {
+				followerCount++;
+				followerMap.insert({fname, followerCount});
+				return true;
+			} else {
+				//already following
+				return false;
+			}
+		}
+
+		bool removeFollower(std::string fname) {
+			auto followerIter = followerMap.find(fname);
+			if (followerIter != followerMap.end()) {
+				followerMap.erase(followerIter);
+				followerCount--;
+				return true;
+			} else {
+				// it is end, so this name isn't following
+				return false;
+			}
 		}
 };
 
