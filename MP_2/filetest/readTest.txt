@@ -1,3 +1,5 @@
 test
 testing
 test test testwrite1
+write1
+write1

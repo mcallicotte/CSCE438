@@ -12,6 +12,8 @@ const std::string TIMELINE_FILE_END = "_tl.txt";
 const int POST_SIZE = 256;
 const int MAX_REPRINT_TIMELINE = 20;
 const int MAX_USERNAME = 32;
+const std::string FOLLOWERS_PATH = FILE_PATH + "fl/";
+const std::string FOLLOWERS_FILE_END = "_fl.txt";
 
 class SafeFile {
   private:
@@ -24,13 +26,18 @@ class SafeFile {
     std::fstream fileStreamOut;
     SafeFile() { }
     
-    SafeFile(std::string name) { 
+    SafeFile(std::string name, bool truncate = false) { 
         //std::cout << "SAFEFILE opening " << fileName << std::endl;
         
         fileName = name;
         fileLock = PTHREAD_MUTEX_INITIALIZER;
         //std::cout << "is it the fileLock?" << std::endl;
-        fileStreamOut.open(fileName.c_str(), std::fstream::out | std::fstream::app);
+        if (truncate) {
+        	fileStreamOut.open(fileName.c_str(), std::fstream::out | std::fstream::trunc);
+        } else {
+        	fileStreamOut.open(fileName.c_str(), std::fstream::out | std::fstream::app);
+        }
+        
         fileStreamIn.open(fileName.c_str(), std::fstream::in);
         //std::cout << "its the open!" << std::endl;
         
@@ -77,12 +84,23 @@ class SafeFile {
     void unlockFile() {
     	pthread_mutex_unlock(&fileLock);
     }
+    
+    void closeStreams() {
+    	fileStreamIn.close();
+    	fileStreamOut.close();
+    }
+    
+    void outputFile() {
+    	lockFile();
+    	
+    }
 };
 
 class Client {
 	private:
 		std::string username;
 		SafeFile timelineFile;
+		SafeFile followerFile;
 		
 	public:
 		Client(std::string name) {
@@ -92,13 +110,22 @@ class Client {
 			std::cout << "    try to create safefile" << std::endl;
 			timelineFile = SafeFile(fileName);
 			//std::cout << "    leaving client constructor" << std::endl;
+			fileName = FOLLOWERS_PATH + username + FOLLOWERS_FILE_END;
+			followerFile = SafeFile(fileName);
 		}
 
-		SafeFile* getFile() { return &timelineFile; }
+		SafeFile* getTimelineFile() { return &timelineFile; }
+		SafeFile* getFollowerFile() { return &followerFile; }
+		std::string getUsername() { return username; }
+		
+		~Client() {
+			timelineFile.closeStreams();
+			followerFile.closeStreams();
+		}
 };
 
 std::map<std::string, Client*> clientMap;
-SafeFile clientList(CLIENT_LIST);
+//SafeFile clientList;
 
 
 void printClientMap() {
@@ -111,6 +138,8 @@ void printClientMap() {
 
 void startupServer() {
 	std::cout << "startupServer" << std::endl;
+	
+	SafeFile clientList = SafeFile(CLIENT_LIST);
 	
 	clientList.lockFile();
 	clientList.fileStreamIn.seekg(std::ios_base::beg);
@@ -132,7 +161,10 @@ void startupServer() {
 
 void cleanServer() {
 	//clean the dynamic memory in the clientList
+	SafeFile clientList(CLIENT_LIST, 1);
+	
 	for (auto i = clientMap.begin(); i != clientMap.end(); i++) {
+		clientList.write(i->second->getUsername() + "\n");
 		delete i->second;
 	}
 }
@@ -148,7 +180,7 @@ class TimelinePrinter {
 			}
 
 			char buffer[POST_SIZE];
-			client->getFile()->fileStreamIn.getline(buffer, POST_SIZE);
+			client->getTimelineFile()->fileStreamIn.getline(buffer, POST_SIZE);
 			std::string post = buffer;
 
 			timeline.push_front(post);
@@ -160,12 +192,12 @@ class TimelinePrinter {
 		
 		TimelinePrinter(std::string clientName): timeline{}, size{0} {
 			client = clientMap.find(clientName)->second;
-			client->getFile()->lockFile();
-			client->getFile()->fileStreamIn.seekg(std::ios_base::beg);
-			while (!client->getFile()->fileStreamIn.eof()) {
+			client->getTimelineFile()->lockFile();
+			client->getTimelineFile()->fileStreamIn.seekg(std::ios_base::beg);
+			while (!client->getTimelineFile()->fileStreamIn.eof()) {
 				addToTimeline();
 			}
-			client->getFile()->unlockFile();
+			client->getTimelineFile()->unlockFile();
 		}
 
 };

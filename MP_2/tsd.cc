@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <fstream>
 #include <vector>
+#include <signal.h>
 
 #include "database.h"
 
@@ -35,10 +36,12 @@ using csce438::Request;
 using csce438::Reply;
 using csce438::SNSService;
 
-// const std::string FILE_PATH = "/db/";
-// const std::string CLIENT_LIST = FILE_PATH + "clientlist.txt";
-// const std::string TIMELINE_PATH = FILE_PATH + "tl/";
-// const std::string TIMELINE_FILE_END = "tl.txt";
+
+void serverInterruptHandler(int sig_num) {
+  std::cout << std::endl << "message to stop execution, cleaning now" << std::endl;
+  cleanServer();
+  kill(getpid(), SIGKILL);
+}
 
 
 class SNSServiceImpl final : public SNSService::Service {
@@ -91,7 +94,7 @@ class SNSServiceImpl final : public SNSService::Service {
       
       // clientMap.insert(std::pair<std::string, Client*>(username, new Client(username)));
       //std::cout << "successfully added to the map" << std::endl;
-      clientList.write(username + "\n"); 
+      //writeToClientList(username); 
       //std::cout << "successfully wrote" << std::endl;
     }
 
@@ -125,6 +128,8 @@ void RunServer(std::string port_no) {
   std::cout << "about to startup server" << std::endl;
   startupServer();
   std::cout << "start grpc startup" << std::endl;
+  
+  signal(SIGINT, serverInterruptHandler);
   
   ServerBuilder builder;
   builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials(), &portInt);
