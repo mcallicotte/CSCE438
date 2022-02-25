@@ -76,6 +76,19 @@ class SNSServiceImpl final : public SNSService::Service {
     // a new user and verify if the username is available
     // or already taken
     // ------------------------------------------------------------
+
+    std::string username = request.get_username();
+
+    auto clientIterator = clientMap.find(username);
+
+    if (clientIterator != clientMap.end()) {
+      std::cout << "added user " << username << "to the map and files" << std::endl;
+      
+      clientMap.insert(std::pair<std::string, Client*>(username, new Client(username)));
+      clientList.write(username + "\n"); 
+    }
+
+    std::cout << "added user " << username << "to the map and files" << std::endl;
     return Status::OK;
   }
 

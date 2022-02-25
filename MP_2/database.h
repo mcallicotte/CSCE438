@@ -30,7 +30,7 @@ class SafeFile {
         fileStream.open(fileName.c_str(), std::fstream::in | std::fstream::out);
         
         if (!fileStream.is_open()) {
-        	throw std::invalid_argument("File did not open");
+        	throw std::invalid_argument("File " fileName + " did not open");
         }
       }
     
@@ -38,6 +38,10 @@ class SafeFile {
         fileName = name;
         fileLock = PTHREAD_MUTEX_INITIALIZER;
         fileStream.open(fileName.c_str(), std::fstream::in | std::fstream::out);
+
+		if (!fileStream.is_open()) {
+        	throw std::invalid_argument("File " fileName + " did not open");
+        }
       }
     
     void write(std::string text) {

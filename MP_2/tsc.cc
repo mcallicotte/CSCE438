@@ -71,6 +71,17 @@ int Client::connectTo()
 	stub_ = csce438::SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
 	std::cout << "client ran connectTo" << std::endl;
 
+    Request loginRequest;
+    loginRequest.set_username(username);
+
+    Reply loginReply;
+
+    grpc::ClientContext context;
+
+    Status status = stub_->Login(&context, loginRequest, &loginReply);
+
+    std::cout << "tried to log in" << std::endl;
+
     return 1; // return 1 if success, otherwise return -1
 }
 
