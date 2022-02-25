@@ -101,6 +101,8 @@ void RunServer(std::string port_no) {
   SNSServiceImpl service;
   
   int portInt = std::stoi(port_no);
+
+  startServer();
   
   ServerBuilder builder;
   builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials(), &portInt);
