@@ -19,7 +19,7 @@
 #include <fstream>
 #include <vector>
 
-#include <database.h>
+#include "database.h"
 
 using google::protobuf::Timestamp;
 using google::protobuf::Duration;
@@ -102,7 +102,9 @@ void RunServer(std::string port_no) {
   
   int portInt = std::stoi(port_no);
 
-  startServer();
+  std::cout << "about to startup server" << std::endl;
+  startupServer();
+  std::cout << "start grpc startup" << std::endl;
   
   ServerBuilder builder;
   builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials(), &portInt);
