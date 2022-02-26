@@ -59,14 +59,16 @@ class SNSServiceImpl final : public SNSService::Service {
     std::string username = request->username();
 
     // get all users
-    for (int i = clientMap.begin(); i != clientMap.end(); i++) {
-      reply->add_all_users(i->second->getUsername())
+    for (auto i = clientMap.begin(); i != clientMap.end(); i++) {
+      reply->add_all_users(i->second->getUsername());
     }
 
     // get followers
     auto iter = clientMap.find(username);
-    for (int i = iter->followerMap.begin(); i != iter->followerMap.end(); i++) {
-      reply->add_following_users(i->first);
+    for (auto i = iter->second->followerMap.begin(); i != iter->second->followerMap.end(); i++) {
+      if (i->first != "") {
+        reply->add_following_users(i->first);
+      }
     }
 
     reply->set_msg("1");

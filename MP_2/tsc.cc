@@ -186,7 +186,7 @@ IReply Client::processCommand(std::string& input)
     if (command == "LIST") {
         //add the list stuff to the ireplay
         int totalUsers = commandReply.all_users_size();
-        std::vector allUsers;
+        std::vector<std::string> allUsers;
         for (int i = 0; i < totalUsers; i++) {
             allUsers.push_back(commandReply.all_users(i));
         }
@@ -194,7 +194,8 @@ IReply Client::processCommand(std::string& input)
         ir.all_users = allUsers;
 
         int totalFollowers = commandReply.following_users_size();
-        std::vector allFollows;
+        std::vector<std::string> allFollows;
+        allFollows.push_back(username);
         for (int i = 0; i < totalFollowers; i++) {
             allFollows.push_back(commandReply.following_users(i));
         }
