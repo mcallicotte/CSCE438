@@ -53,8 +53,24 @@ class SNSServiceImpl final : public SNSService::Service {
     // LIST request from the user. Ensure that both the fields
     // all_users & following_users are populated
     // ------------------------------------------------------------
-    std::cout << "ran list - not implemented" << std::endl;
-    return Status(grpc::StatusCode::UNIMPLEMENTED, "m1");
+    // std::cout << "ran list - not implemented" << std::endl;
+    // return Status(grpc::StatusCode::UNIMPLEMENTED, "m1");
+
+    std::string username = request->username();
+
+    // get all users
+    for (int i = clientMap.begin(); i != clientMap.end(); i++) {
+      reply->add_all_users(i->second->getUsername())
+    }
+
+    // get followers
+    auto iter = clientMap.find(username);
+    for (int i = iter->followerMap.begin(); i != iter->followerMap.end(); i++) {
+      reply->add_following_users(i->first);
+    }
+
+    reply->set_msg("1");
+    return Status::OK;
   }
 
   Status Follow(ServerContext* context, const Request* request, Reply* reply) override {

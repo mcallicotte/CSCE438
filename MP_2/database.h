@@ -101,10 +101,10 @@ class Client {
 		std::string username;
 		SafeFile timelineFile;
 		SafeFile followerFile;
-		std::map<std::string, int> followerMap;
 		int followerCount = 0;
 		
 	public:
+		std::map<std::string, int> followerMap;
 		Client(std::string name): followerMap{} {
 			//std::cout << "    welcome to client constructor" << std::endl;
 			username = name;

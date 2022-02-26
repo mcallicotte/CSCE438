@@ -7,6 +7,7 @@
 #include "sns.grpc.pb.h"
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 class Client : public IClient
 {
@@ -184,6 +185,21 @@ IReply Client::processCommand(std::string& input)
 
     if (command == "LIST") {
         //add the list stuff to the ireplay
+        int totalUsers = commandReply.all_users_size();
+        std::vector allUsers;
+        for (int i = 0; i < totalUsers; i++) {
+            allUsers.push_back(commandReply.all_users(i));
+        }
+
+        ir.all_users = allUsers;
+
+        int totalFollowers = commandReply.following_users_size();
+        std::vector allFollows;
+        for (int i = 0; i < totalFollowers; i++) {
+            allFollows.push_back(commandReply.following_users(i));
+        }
+
+        ir.following_users = allFollows;
     }
 
     return ir;
