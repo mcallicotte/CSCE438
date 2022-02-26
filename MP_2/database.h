@@ -96,12 +96,63 @@ class SafeFile {
     }
 };
 
+class Timeline {
+	private:
+		int size;
+		Client* client;
+		int messageIncrement;
+	
+	public:
+		std::deque<std::string> timeline;
+
+		void addToTimeline() {
+			if (size == MAX_REPRINT_TIMELINE) {
+				timeline.pop_back();
+			}
+
+			char buffer[POST_SIZE];
+			client->getTimelineFile()->fileStreamIn.getline(buffer, POST_SIZE);
+			std::string post = buffer;
+
+			timeline.push_front(post);
+			++size;
+			messageIncrement++;
+		}
+
+		void pushTimeline(std::string message) {
+			if (size == MAX_REPRINT_TIMELINE) {
+				timeline.pop_back();
+			}
+
+			timeline.push_front(message);
+			++size;
+			messageIncrement++;
+		}
+
+		Timeline() { }
+
+		int getMessageIncrement() { return messageIncrement; }
+		
+		Timeline(std::string clientName): timeline{}, size{0}, messageIncrement{0} {
+			client = clientMap.find(clientName)->second;
+			client->getTimelineFile()->lockFile();
+			client->getTimelineFile()->fileStreamIn.seekg(std::ios_base::beg);
+			while (!client->getTimelineFile()->fileStreamIn.eof()) {
+				addToTimeline();
+			}
+			client->getTimelineFile()->unlockFile();
+		}
+
+};
+
 class Client {
 	private:
 		std::string username;
 		SafeFile timelineFile;
 		SafeFile followerFile;
 		int followerCount = 0;
+		Timeline timeline;
+		int timelinesOpen = 0;
 		
 	public:
 		std::map<std::string, int> followerMap;
@@ -129,11 +180,17 @@ class Client {
 			followerFile.unlockFile();
 
 			followerCount = followerMap.size();
+
+			timeline = Timeline(username);
 		}
 
 		SafeFile* getTimelineFile() { return &timelineFile; }
 		SafeFile* getFollowerFile() { return &followerFile; }
 		std::string getUsername() { return username; }
+		Timeline getTimeline() { return timeline; }
+		
+		void openTimeline() { timelinesOpen++; };
+		int getTimelinesOpen() { return timelinesOpen; }
 		
 		~Client() {
 			timelineFile.closeStreams();
@@ -215,35 +272,3 @@ void cleanServer() {
 	}
 }
 
-class TimelinePrinter {
-	private:
-		int size;
-		Client* client;
-
-		void addToTimeline() {
-			if (size == MAX_REPRINT_TIMELINE) {
-				timeline.pop_back();
-			}
-
-			char buffer[POST_SIZE];
-			client->getTimelineFile()->fileStreamIn.getline(buffer, POST_SIZE);
-			std::string post = buffer;
-
-			timeline.push_front(post);
-			++size;
-		}
-	
-	public:
-		std::deque<std::string> timeline;
-		
-		TimelinePrinter(std::string clientName): timeline{}, size{0} {
-			client = clientMap.find(clientName)->second;
-			client->getTimelineFile()->lockFile();
-			client->getTimelineFile()->fileStreamIn.seekg(std::ios_base::beg);
-			while (!client->getTimelineFile()->fileStreamIn.eof()) {
-				addToTimeline();
-			}
-			client->getTimelineFile()->unlockFile();
-		}
-
-};

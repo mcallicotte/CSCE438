@@ -44,6 +44,8 @@ void serverInterruptHandler(int sig_num) {
   kill(getpid(), SIGKILL);
 }
 
+int mainServerPID = getpid();
+
 
 class SNSServiceImpl final : public SNSService::Service {
   
@@ -177,6 +179,53 @@ class SNSServiceImpl final : public SNSService::Service {
     // receiving a message/post from a user, recording it in a file
     // and then making it available on his/her follower's streams
     // ------------------------------------------------------------
+    Message message;
+
+    //read in client username
+    stream->read(&message);
+
+    //get client
+    Client* client = clientMap.find(message.username());
+
+    // add timeline and get timeline count
+    client->opentTimeline();
+    int mode = client->getTimelinesOpen();
+
+    if (mode % 2 == 1) {
+      // we are odd. this means it was the first one open. so we read.
+      // first we print everything already in timeline
+      for (auto i = client->getTimeline.timeline.rbegin(); i != client.getTimeline.timeline.rend(); i++) {
+        std::string fullMessage = *i;
+        std::string messageSender = fullMessage.substr(0, fullMessage.find('(') + 1);
+        message.set_username(messageSender);
+        message.set_msg(fullMessage);
+        stream->write(message);
+      }
+      while(stream->Read(&message)) {
+        // push it to your timeline
+        std::string fullMessage = message.username() + "(TIME) >>"  + message.msg();
+        client->getTimeline()->pushTimeline(fullMessage);
+        //push it to your follower's timeline
+        for (auto i = client->followerMap.begin(); i != client->followerMap.end(); i++) {
+          auto follower = clientMap.find(i->first);
+          follower->second->getTimeline().pushTimeline(fullMessage);
+        }
+      }
+    } else {
+      // we are even. this means it was the second one open. so we write.
+      messageCount = client->getTimeline.getMessageIncrement()
+      while(true) {
+        if (messageCount != client->getTimeline.getMessageIncrement()) {
+          // a new message has been pushed
+          std::string fullMessage = client->getTimeline.timeline.front();
+          std::string messageSender = fullMessage.substr(0, fullMessage.find('(') + 1);
+          message.set_username(messageSender);
+          message.set_msg(fullMessage);
+          stream->write(message);
+        }
+      }
+    }
+  
     return Status::OK;
   }
 

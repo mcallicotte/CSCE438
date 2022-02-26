@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <thread>
 
 class Client : public IClient
 {
@@ -134,9 +135,12 @@ IReply Client::processCommand(std::string& input)
             status = stub_->List(&context, commandRequest, &commandReply);
         } else if (command == "TIMELINE") {
             // this will run timeline
-            std::cout << "timeline is not implemented" << std::endl;
+            //std::cout << "timeline is not implemented" << std::endl;
+            // auto writer(stub_->Timeline(&context, &stats))
+            commandReply.set_msg("1");
         } else {
-            status = grpc::Status::CANCELLED;  // failure_invalid_command
+            status = grpc::Status::OK;  // failure_invalid_command
+            commandReply.set_msg("5")
         }
     }
 
@@ -238,6 +242,32 @@ void Client::processTimeline()
     // You should use them as you did in hw1.
 	// ------------------------------------------------------------
 
+    grpc::ClientContext context;
+    csce438::Message message;
+
+    //open read timeline
+    auto reader(_stub->Timeline(&context, &stats));
+
+    //first read in any messages in timeline
+    int i = 0;
+    while (i < 20) {
+        reader.Read(message);
+        displayPostMessage(message.username(), message.msg(), "TIME");
+        i++;
+    }
+
+    thread t = thread(otherTimeline());
+    t.detach();
+
+    while(true) {
+        std::string fullMessage = getPostMessage() 
+        message.set_username(username);
+        message.set_msg(fullMessage);
+
+        reader.Write(&message);
+    }
+    
+
     // ------------------------------------------------------------
     // IMPORTANT NOTICE:
     //
@@ -246,4 +276,16 @@ void Client::processTimeline()
     // and you can terminate the client program by pressing
     // CTRL-C (SIGINT)
 	// ------------------------------------------------------------
+}
+
+void Client::otherTimeline() {
+    grpc::ClientContext context;
+    csce438::Message message;
+
+    //open write timeline
+    auto writer(_stub->Timeline(&context, &message));
+
+    while (writer->Read(&message)) {
+        displayPostMessage(message.username(), message.msg(), "TIME");
+    }
 }
