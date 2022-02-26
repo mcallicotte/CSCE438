@@ -127,7 +127,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
     auto iter = clientMap.find(fname);
     if (iter == clientMap.end()) {
-      reply->set_msg("2");
+      reply->set_msg("3");
       return Status::OK;//(grpc::StatusCode::FAILED_PRECONDITION, "m6");
     }
     
