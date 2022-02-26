@@ -13,6 +13,7 @@
 #include <grpc++/grpc++.h>
 
 #include "sns.grpc.pb.h"
+#include "sns.pb.h"
 
 #include <iostream>
 #include <pthread.h>
@@ -53,7 +54,7 @@ class SNSServiceImpl final : public SNSService::Service {
     // all_users & following_users are populated
     // ------------------------------------------------------------
     std::cout << "ran list - not implemented" << std::endl;
-    return Status::UNIMPLEMENTED;
+    return Status(grpc::StatusCode::UNIMPLEMENTED, "m1");
   }
 
   Status Follow(ServerContext* context, const Request* request, Reply* reply) override {
@@ -64,24 +65,28 @@ class SNSServiceImpl final : public SNSService::Service {
     // ------------------------------------------------------------
     
     std::string username = request->username();
-    std::string fname = request->arguments();
+    const std::string fname = request->arguments(0);
 
     if (username == fname) {
-      return Status::ALREADY_EXISTS;
+      reply->set_msg("2");
+      return Status::OK;//(grpc::StatusCode::ALREADY_EXISTS, "m2");
     }
 
     auto iter = clientMap.find(fname);
     if (iter == clientMap.end()) {
-      return Status::FAILED_PRECONDICTION;
+      reply->set_msg("3");
+      return Status::OK;//(grpc::StatusCode::FAILED_PRECONDITION, "m3");
     }
     
     Client* client = iter->second;
-    bool status = client->addFollower()
+    bool status = client->addFollower(username);
 
     if (status) {
+      reply->set_msg("1");
       return Status::OK;
     } else {
-      return Status::ALREADY_EXISTS;
+      reply->set_msg("2");
+      return Status::OK;//(grpc::StatusCode::ALREADY_EXISTS, "m4");
     } 
   }
 
@@ -95,24 +100,28 @@ class SNSServiceImpl final : public SNSService::Service {
     // return Status::UNIMPLEMENTED;
 
     std::string username = request->username();
-    std::string fname = request->arguments();
+    const std::string fname = request->arguments(0);
 
     if (username == fname) {
-      return Status::INVALID_ARGUMENT;
+      reply->set_msg("3");
+      return Status::OK;//(grpc::StatusCode::INVALID_ARGUMENT, "m5");
     }
 
     auto iter = clientMap.find(fname);
     if (iter == clientMap.end()) {
-      return Status::FAILED_PRECONDICTION;
+      reply->set_msg("2");
+      return Status::OK;//(grpc::StatusCode::FAILED_PRECONDITION, "m6");
     }
     
     Client* client = iter->second;
-    bool status = client->removeFollower()
+    bool status = client->removeFollower(username);
 
     if (status) {
+      reply->set_msg("1");
       return Status::OK;
     } else {
-      return Status::INVALID_ARGUMENT;
+      reply->set_msg("3");
+      return Status::OK;//(grpc::StatusCode::INVALID_ARGUMENT, "m7");
     } 
 
   }

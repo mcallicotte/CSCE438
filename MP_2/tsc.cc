@@ -104,7 +104,7 @@ IReply Client::processCommand(std::string& input)
 	std::stringstream sstream;
     sstream << input;
 
-    std::string command, username = "";
+    std::string command, othername = "";
     sstream >> command;
     sstream >> othername;
 
@@ -122,7 +122,7 @@ IReply Client::processCommand(std::string& input)
     
 
     if (command == "FOLLOW" || command == "UNFOLLOW") {
-        commandRequest.set_arguments(othername);
+        commandRequest.add_arguments(othername);
         if (command == "FOLLOW") {
             status = stub_->Follow(&context, commandRequest, &commandReply);
         } else {
@@ -150,19 +150,37 @@ IReply Client::processCommand(std::string& input)
     IReply ir;
 
     ir.grpc_status = status;
-    if (status == grpc::Status::OK) {
-        comm_status = SUCCESS;
-    } else if (status == grpc::Status::FAILED_PRECONDICTION) {
-        comm_status = FAILURE_NOT_EXISTS;
-    } else if (status == grpc::Status::ALREADY_EXISTS) {
-        comm_status = FAILURE_ALREADY_EXISTS;
-    } else if (status == grpc::Status::INVALID_ARGUMENT) {
-        comm_status = FAILURE_INVALID_USERNAME;
-    } else if (status == grpc::Status::CANCELLED) {
-        comm_status = FAILURE_INVALID;
+    // if (status.ok()) {
+    //     ir.comm_status = SUCCESS;
+    // } else if (status.error_code() == grpc::StatusCode::FAILED_PRECONDITION) {
+    //     ir.comm_status = FAILURE_NOT_EXISTS;
+    // } else if (status.error_code() == grpc::StatusCode::ALREADY_EXISTS) {
+    //     ir.comm_status = FAILURE_ALREADY_EXISTS;
+    // } else if (status.error_code() == grpc::StatusCode::INVALID_ARGUMENT) {
+    //     ir.comm_status = FAILURE_INVALID_USERNAME;
+    // } else if (status.error_code() == grpc::StatusCode::CANCELLED) {
+    //     ir.comm_status = FAILURE_INVALID;
+    // } else {
+    //     ir.comm_status = FAILURE_UNKNOWN;
+    // }
+    
+    std::string message = commandReply.msg();
+    
+    if (message == "1") {
+        ir.comm_status = SUCCESS;
+    } else if(message == "2") {
+        ir.comm_status = FAILURE_ALREADY_EXISTS;
+    } else if (message == "3") {
+        ir.comm_status = FAILURE_NOT_EXISTS;
+    } else if (message == "4") {
+        ir.comm_status = FAILURE_INVALID_USERNAME;
+    } else if (message == "5") {
+        ir.comm_status = FAILURE_INVALID;
     } else {
-        comm_status = FAILURE_UNKNOWN;
+        ir.comm_status = FAILURE_UNKNOWN;
     }
+    
+    
 
     if (command == "LIST") {
         //add the list stuff to the ireplay

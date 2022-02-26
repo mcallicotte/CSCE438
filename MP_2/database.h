@@ -105,7 +105,7 @@ class Client {
 		int followerCount = 0;
 		
 	public:
-		Client(std::string name): followerList{} {
+		Client(std::string name): followerMap{} {
 			//std::cout << "    welcome to client constructor" << std::endl;
 			username = name;
 			std::string fileName = TIMELINE_PATH + username + TIMELINE_FILE_END;
@@ -121,7 +121,7 @@ class Client {
 			int lineCount = 1;
 			while (!followerFile.fileStreamIn.eof()) {
 				char buffer[MAX_USERNAME];
-				followerFile.getline(buffer, POST_SIZE);
+				followerFile.fileStreamIn.getline(buffer, POST_SIZE);
 				std::string fname = buffer;
 				followerMap.insert({fname, lineCount});
 				++lineCount;
@@ -141,7 +141,7 @@ class Client {
 
 			followerFile = SafeFile(FOLLOWERS_PATH + username + FOLLOWERS_FILE_END, 1);
 			
-			for (auto i = follwerMap.begin(); i != followerMap.end(); i++) {
+			for (auto i = followerMap.begin(); i != followerMap.end(); i++) {
 				followerFile.write(i->first + "\n");
 			}
 		}
