@@ -10,6 +10,13 @@
 #include <vector>
 #include <thread>
 
+#include <chrono>
+#include <ctime>
+#include <signal.h>
+#include <unistd.h>
+
+
+
 class Client : public IClient
 {
     public:
@@ -18,19 +25,24 @@ class Client : public IClient
                const std::string& p)
             :hostname(hname), username(uname), port(p)
             {}
+        std::unique_ptr<csce438::SNSService::Stub> stub_;
     protected:
         virtual int connectTo();
         virtual IReply processCommand(std::string& input);
         virtual void processTimeline();
-    private:
+        //static void otherTimeline(Client newClient);
+    public:
         std::string hostname;
         std::string username;
         std::string port;
         
         // You can have an instance of the client stub
         // as a member variable.
-        std::unique_ptr<csce438::SNSService::Stub> stub_;
+        
 };
+
+void readTimeline(Client* client);
+void writeTimeline(Client* client, grpc::ClientReaderWriter<csce438::Message, csce438::Message>* stream);
 
 int main(int argc, char** argv) {
 
@@ -140,7 +152,7 @@ IReply Client::processCommand(std::string& input)
             commandReply.set_msg("1");
         } else {
             status = grpc::Status::OK;  // failure_invalid_command
-            commandReply.set_msg("5")
+            commandReply.set_msg("5");
         }
     }
 
@@ -245,29 +257,15 @@ void Client::processTimeline()
 
     grpc::ClientContext context;
     csce438::Message message;
-
-    //open read timeline
-    auto reader(_stub->Timeline(&context, &stats));
-
-    //first read in any messages in timeline
-    int i = 0;
-    while (i < 20) {
-        reader.Read(message);
-        displayPostMessage(message.username(), message.msg(), "TIME");
-        i++;
-    }
-
-    thread t = thread(otherTimeline());
-    t.detach();
-
-    while(true) {
-        std::string fullMessage = getPostMessage() 
-        message.set_username(username);
-        message.set_msg(fullMessage);
-
-        reader.Write(&message);
-    }
     
+    // std::thread i = std::thread(initializeTimeline, this);
+    // i.join();
+    
+    std::thread r = std::thread(readTimeline, this);
+    r.join();
+    
+    // std::thread w = std::thread(writeTimeline, this);
+    // w.detach();
 
     // ------------------------------------------------------------
     // IMPORTANT NOTICE:
@@ -278,15 +276,64 @@ void Client::processTimeline()
     // CTRL-C (SIGINT)
 	// ------------------------------------------------------------
 }
+//};
 
-void Client::otherTimeline() {
+
+void readTimeline(Client* client) {
     grpc::ClientContext context;
     csce438::Message message;
+    
+    std::cout << "opening read timeline" << std::endl;
+    std::shared_ptr<grpc::ClientReaderWriter<csce438::Message, csce438::Message>> reader(client->stub_->Timeline(&context));
+        
+    std::cout << "initialize timeline" << std::endl;
+    
+    message.set_username(client->username);
+    reader->Write(message);
+        
+    //first read in number to read in
+    reader->Read(&message);
+    int until = std::stoi(message.msg());
+    int i = 0;
+    while (i < until) {
+        std::cout << "waiting for a message" << std::endl;
+        csce438::Message newMessage;
+        reader->Read(&newMessage);
+        time_t currentTime; 
+        time(&currentTime);
+        if (message.msg() != "") {
+            displayPostMessage(newMessage.username(), newMessage.msg(), currentTime);
+        }
+        i++;
+        std::cout << "recieved message" << std::endl;
+    }
+    
+    std::cout << "finished initializing" << std::endl;
+    
+    std::thread w = std::thread([reader]() {
+        grpc::ClientContext context;
+        csce438::Message message;
+    
+        //open write timeline
+        std::cout << "you opened the writer" << std::endl;
 
-    //open write timeline
-    auto writer(_stub->Timeline(&context, &message));
-
-    while (writer->Read(&message)) {
-        displayPostMessage(message.username(), message.msg(), "TIME");
+     while (reader->Read(&message)) {
+            std::cout << "recieved a message" << std::endl;
+            time_t currentTime; 
+            time(&currentTime);
+            displayPostMessage(message.username(), message.msg(), currentTime);
+            std::cout << "printed message" << std::endl;
+        }
+    });
+    w.detach();
+    
+    while(true) {
+        std::string fullMessage = getPostMessage();
+        std::cout << "wrote a message" << std::endl;
+        message.set_username(client->username);
+        message.set_msg(fullMessage);
+    
+        reader->Write(message);
+        std::cout << "sent message to server" << std::endl;
     }
 }

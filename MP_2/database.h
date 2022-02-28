@@ -5,6 +5,26 @@
 #include <deque>
 #include <iostream>
 
+#include <chrono>
+#include <ctime>
+#include <signal.h>
+#include <unistd.h>
+
+#include <google/protobuf/timestamp.pb.h>
+#include <google/protobuf/duration.pb.h>
+
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <stdlib.h>
+#include <unistd.h>
+#include <google/protobuf/util/time_util.h>
+#include <grpc++/grpc++.h>
+
+#include "sns.grpc.pb.h"
+#include "sns.pb.h"
+
 const std::string FILE_PATH = "db/";
 const std::string CLIENT_LIST = FILE_PATH + "clientlist.txt";
 const std::string TIMELINE_PATH = FILE_PATH + "tl/";
@@ -68,11 +88,11 @@ class SafeFile {
       }
     
     void write(std::string text) {
-      std::cout << "    start write - " << text << std::endl;
+      //std::cout << "    start write - " << text << std::endl;
       pthread_mutex_lock(&fileLock);
       fileStreamOut << text;
       pthread_mutex_unlock(&fileLock);
-      std::cout << "    end write" << std::endl;
+      //std::cout << "    end write" << std::endl;
     }
     
     // std::fstream getFileStream() { return fileStream; }
@@ -96,63 +116,121 @@ class SafeFile {
     }
 };
 
+class Post {
+	private:
+		 std::string username;
+		 const std::string timestamp = "TIME";
+		 std::string text;
+		 
+	public:
+		std::string getUsername() { return username; }
+		std::string getTimestamp() { return timestamp; }
+		std::string getText() { return text; }
+		
+		void setUsername(std::string name) { username = name; }
+		// void setTimestamp(std::string stamp) { timestamp = stamp; }
+		// void setTimestamp() {
+		// 	time_t currentTime; 
+  //      	timestamp = std::to_string(time(&currentTime));
+		// }
+		void setText(std::string message) { text = message; }
+		
+		std::string printPost() {
+			return username + "(" + timestamp + ") >>" + text;
+		}
+};
+
 class Timeline {
 	private:
 		int size;
-		Client* client;
+		SafeFile* timelineFile;
 		int messageIncrement;
 	
 	public:
-		std::deque<std::string> timeline;
+		std::deque<Post> timeline;
 
 		void addToTimeline() {
+			char buffer1[POST_SIZE];
+			char buffer2[POST_SIZE];
+			char buffer3[POST_SIZE];
+			Post post;
+			
 			if (size == MAX_REPRINT_TIMELINE) {
 				timeline.pop_back();
 			}
+				
+			timelineFile->fileStreamIn.getline(buffer1, POST_SIZE);
+			post.setUsername(std::string(buffer1));
+			
+		
+			timelineFile->fileStreamIn.getline(buffer2, POST_SIZE);
+			//post.setTimestamp(std::string(buffer2));
+			
+			timelineFile->fileStreamIn.getline(buffer3, POST_SIZE);
+			post.setText(std::string(buffer3));
 
-			char buffer[POST_SIZE];
-			client->getTimelineFile()->fileStreamIn.getline(buffer, POST_SIZE);
-			std::string post = buffer;
+			if (post.getUsername() != "") {
+				timeline.push_front(post);
+				++size;
+				messageIncrement++;
+				std::cout << "added " << post.printPost() << "to timeline" << std::endl;
+			}
+		}
+
+		void pushTimeline(Post post) {
+			if (size == MAX_REPRINT_TIMELINE) {
+				timeline.pop_back();
+			}
 
 			timeline.push_front(post);
 			++size;
-			messageIncrement++;
-		}
-
-		void pushTimeline(std::string message) {
-			if (size == MAX_REPRINT_TIMELINE) {
-				timeline.pop_back();
-			}
-
-			timeline.push_front(message);
-			++size;
+			std::cout << "added \"" << post.printPost() << "\" to timeline" << std::endl;
 			messageIncrement++;
 		}
 
 		Timeline() { }
+		
+		void printTimeline() {
+			for (auto i = timeline.begin(); i != timeline.end(); i++) {
+				std::cout << i->printPost() << std::endl;
+			}
+		}
 
 		int getMessageIncrement() { return messageIncrement; }
-		
-		Timeline(std::string clientName): timeline{}, size{0}, messageIncrement{0} {
-			client = clientMap.find(clientName)->second;
-			client->getTimelineFile()->lockFile();
-			client->getTimelineFile()->fileStreamIn.seekg(std::ios_base::beg);
-			while (!client->getTimelineFile()->fileStreamIn.eof()) {
+		int getSize() { return size; }
+
+		Timeline(std::string clientName, SafeFile* file): timeline{}, size{0}, messageIncrement{0} {
+			//client = clientMap.find(clientName)->second;
+			timelineFile = file;
+			timelineFile->lockFile();
+			timelineFile->fileStreamIn.seekg(std::ios_base::beg);
+			while (!timelineFile->fileStreamIn.eof()) {
 				addToTimeline();
 			}
-			client->getTimelineFile()->unlockFile();
+			timelineFile->unlockFile();
 		}
 
 };
 
+
+
 class Client {
+	
 	private:
 		std::string username;
 		SafeFile timelineFile;
 		SafeFile followerFile;
 		int followerCount = 0;
+		grpc::ServerReaderWriter<csce438::Message, csce438::Message>* stream;
+		bool hasStream = false;
+	public:
+		SafeFile* getTimelineFile() { return &timelineFile; }
+		SafeFile* getFollowerFile() { return &followerFile; }
+		std::string getUsername() { return username; }
+	private:
+		
 		Timeline timeline;
-		int timelinesOpen = 0;
+		//int timelinesOpen = 0;
 		
 	public:
 		std::map<std::string, int> followerMap;
@@ -181,16 +259,13 @@ class Client {
 
 			followerCount = followerMap.size();
 
-			timeline = Timeline(username);
+			timeline = Timeline(username, &timelineFile);
 		}
-
-		SafeFile* getTimelineFile() { return &timelineFile; }
-		SafeFile* getFollowerFile() { return &followerFile; }
-		std::string getUsername() { return username; }
+		
 		Timeline getTimeline() { return timeline; }
 		
-		void openTimeline() { timelinesOpen++; };
-		int getTimelinesOpen() { return timelinesOpen; }
+		//void openTimeline() { timelinesOpen++; };
+		//int getTimelinesOpen() { return timelinesOpen; }
 		
 		~Client() {
 			timelineFile.closeStreams();
@@ -201,6 +276,19 @@ class Client {
 			for (auto i = followerMap.begin(); i != followerMap.end(); i++) {
 				followerFile.write(i->first + "\n");
 			}
+			
+			// timelineFile = SafeFile(TIMELINE_PATH + username + TIMELINE_FILE_END, 1);
+			
+			// for (auto i = getTimeline().timeline.rbegin(); i != getTimeline().timeline.rend(); i++) {
+			// 	auto element = i--;
+				
+			// 	timelineFile.write(element->getUsername() + "\n");
+			// 	timelineFile.write(element->getTimestamp() + "\n");
+			// 	timelineFile.write(element->getText() + "\n");
+			// }
+			
+			timelineFile.closeStreams();
+			followerFile.closeStreams();
 		}
 
 		bool addFollower(std::string fname) {
@@ -225,6 +313,17 @@ class Client {
 				return false;
 			}
 		}
+		
+		void addStream(grpc::ServerReaderWriter<csce438::Message, csce438::Message>* theStream) {
+			stream = theStream;
+			hasStream = true;
+		}
+		
+		bool getStreamStatus() {
+			return hasStream;
+		}
+		
+		grpc::ServerReaderWriter<csce438::Message, csce438::Message>* getStream() { return stream; }
 };
 
 std::map<std::string, Client*> clientMap;
@@ -257,6 +356,7 @@ void startupServer() {
 		clientMap.insert(std::pair<std::string, Client*>(username, addClient));
 	}
 	clientList.unlockFile();
+	clientList.closeStreams();
 	
 	printClientMap();
 	std::cout << "end startupServer" << std::endl;
@@ -270,5 +370,6 @@ void cleanServer() {
 		clientList.write(i->second->getUsername() + "\n");
 		delete i->second;
 	}
+	clientList.closeStreams();
 }
 

@@ -20,6 +20,7 @@
 #include <fstream>
 #include <vector>
 #include <signal.h>
+#include <time.h>
 
 #include "database.h"
 
@@ -100,6 +101,8 @@ class SNSServiceImpl final : public SNSService::Service {
     
     Client* client = iter->second;
     bool status = client->addFollower(username);
+    
+    client->getTimeline().printTimeline();
 
     if (status) {
       reply->set_msg("1");
@@ -184,50 +187,97 @@ class SNSServiceImpl final : public SNSService::Service {
     Message message;
 
     //read in client username
-    stream->read(&message);
+    stream->Read(&message);
 
     //get client
-    Client* client = clientMap.find(message.username());
+    Client* client = clientMap.find(message.username())->second;
 
     // add timeline and get timeline count
-    client->opentTimeline();
-    int mode = client->getTimelinesOpen();
+    //client->openTimeline();
+    //int mode = client->getTimelinesOpen();
+    
+    // first we print everything already in timeline
+    // first first we tell client how many we are sending
+    int timelineSize = client->getTimeline().getSize();
+    message.set_msg(std::string(std::to_string(timelineSize)));
+    stream->Write(message);
+    std::cout << "sent the number of messages." << std::endl;
+    client->getTimeline().printTimeline();
+    int testingIncrement = 1;
+    
+    // Message MessageBegin, MessageLast;
+    // if (client->getTimeline().getSize() != 0) {
+    //   MessageBegin.set_username(std::prev(client->getTimeline().timeline.rend())->getUsername());
+    //   std::cout << "Message prev(rend) name: " << MessageBegin.username() << std::endl;
+      
+    //   MessageLast.set_username(client->getTimeline().timeline.rbegin()->getUsername());
+    //   std::cout << "Message rbegin name: " << MessageLast.username() << std::endl;
+      
+    // } else {
+    //   std::cout << "the timeline is empty" << std::endl;
+    // }
+    
+    if (timelineSize != 0) {
+        std::cout << "starting past timeline for loop" << std::endl;
+        for (auto j = client->getTimeline().timeline.rbegin(); j != std::prev(client->getTimeline().timeline.rend()); j++) {
+          Message newMessage;
+          std::cout << "trying to print " << testingIncrement  << " with post " << j->printPost() << std::endl;
+          auto element = j;
+      
+          newMessage.set_username(element->getUsername());
+          //std::cout << "set username: " << newMessage.username() << std::endl;
 
-    if (mode % 2 == 1) {
-      // we are odd. this means it was the first one open. so we read.
-      // first we print everything already in timeline
-      for (auto i = client->getTimeline.timeline.rbegin(); i != client.getTimeline.timeline.rend(); i++) {
-        std::string fullMessage = *i;
-        std::string messageSender = fullMessage.substr(0, fullMessage.find('(') + 1);
-        message.set_username(messageSender);
-        message.set_msg(fullMessage);
-        stream->write(message);
-      }
-      while(stream->Read(&message)) {
-        // push it to your timeline
-        std::string fullMessage = message.username() + "(TIME) >>"  + message.msg();
-        client->getTimeline()->pushTimeline(fullMessage);
-        //push it to your follower's timeline
-        for (auto i = client->followerMap.begin(); i != client->followerMap.end(); i++) {
-          auto follower = clientMap.find(i->first);
-          follower->second->getTimeline().pushTimeline(fullMessage);
+          newMessage.set_msg(element->getText());
+          //std::cout << "sending this message: " << newMessage.msg() << std::endl;
+          stream->Write(newMessage);
+          std::cout << "sent message: " << element->printPost() << std::endl;
+      
+          testingIncrement++;
         }
-      }
-    } else {
-      // we are even. this means it was the second one open. so we write.
-      messageCount = client->getTimeline.getMessageIncrement()
-      while(true) {
-        if (messageCount != client->getTimeline.getMessageIncrement()) {
-          // a new message has been pushed
-          std::string fullMessage = client->getTimeline.timeline.front();
-          std::string messageSender = fullMessage.substr(0, fullMessage.find('(') + 1);
-          message.set_username(messageSender);
-          message.set_msg(fullMessage);
-          stream->write(message);
-        }
-      }
+    
+    
+        std::cout << "now for the last element (as in the beginning of the list)" << std::endl;
+        Post lastElement = client->getTimeline().timeline.front();
+        message.set_username(lastElement.getUsername());
+        message.set_msg(lastElement.getText());
+        stream->Write(message);
+        std::cout << "sent message: " << lastElement.printPost() << std::endl;
     }
-  
+    
+    
+    
+    
+    // if (size != 0)
+    
+    
+    std::cout << "finshed past timeline for loop, ready for new messages" << std::endl;
+    
+    while(stream->Read(&message)) {
+      // push it to your timeline
+      Post post;
+      post.setUsername(message.username());
+      //post.setTimestamp();
+      post.setText(message.msg());
+        
+      std::cout << "read in a message: " << post.printPost() << std::endl;
+        
+      client->getTimeline().pushTimeline(post);
+      //push it to your follower's timeline
+      std::cout << "pushing to followers." << std::endl;
+      for (auto i = client->followerMap.begin(); i != client->followerMap.end(); i++) {
+        std::cout << "finding follower " << i->first << "in clientMap" <<std::endl;
+        auto follower = clientMap.find(i->first);
+        if (i->first != "") {
+          std::cout << "pushing to their timeline" << std::endl;
+          follower->second->getTimeline().pushTimeline(post);
+          if (follower->second->getStreamStatus()) {
+            follower->second->getStream()->Write(message);
+            std::cout << "pushed to a stream" << std::endl;
+          }
+        }
+      }
+      std::cout << "pushed to to timelines" << std::endl;
+    }
     return Status::OK;
   }
 
