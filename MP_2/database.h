@@ -144,7 +144,6 @@ class Timeline {
 	private:
 		int size;
 		SafeFile* timelineFile;
-		int messageIncrement;
 	
 	public:
 		std::deque<Post> timeline;
@@ -172,8 +171,7 @@ class Timeline {
 			if (post.getUsername() != "") {
 				timeline.push_front(post);
 				++size;
-				messageIncrement++;
-				std::cout << "added " << post.printPost() << "to timeline" << std::endl;
+				std::cout << "added " << post.printPost() << "to timeline in add to timeline" << std::endl;
 			}
 		}
 
@@ -184,8 +182,7 @@ class Timeline {
 
 			timeline.push_front(post);
 			++size;
-			std::cout << "added \"" << post.printPost() << "\" to timeline" << std::endl;
-			messageIncrement++;
+			std::cout << "added \"" << post.printPost() << "\" to timeline in push timeline" << std::endl;
 		}
 
 		Timeline() { }
@@ -196,10 +193,9 @@ class Timeline {
 			}
 		}
 
-		int getMessageIncrement() { return messageIncrement; }
 		int getSize() { return size; }
 
-		Timeline(std::string clientName, SafeFile* file): timeline{}, size{0}, messageIncrement{0} {
+		Timeline(std::string clientName, SafeFile* file): timeline{}, size{0} {
 			//client = clientMap.find(clientName)->second;
 			timelineFile = file;
 			timelineFile->lockFile();
@@ -218,30 +214,39 @@ class Client {
 	
 	private:
 		std::string username;
-		SafeFile timelineFile;
+		//SafeFile timelineFile;
 		SafeFile followerFile;
 		int followerCount = 0;
 		grpc::ServerReaderWriter<csce438::Message, csce438::Message>* stream;
 		bool hasStream = false;
 	public:
-		SafeFile* getTimelineFile() { return &timelineFile; }
+		//SafeFile* getTimelineFile() { return &timelineFile; }
 		SafeFile* getFollowerFile() { return &followerFile; }
 		std::string getUsername() { return username; }
+
 	private:
 		
-		Timeline timeline;
+		//Timeline timeline;
 		//int timelinesOpen = 0;
 		
 	public:
 		std::map<std::string, int> followerMap;
+		
+		void printFollowers() {
+			for (auto i = followerMap.begin(); i != followerMap.end(); i++) {
+				std::cout << i->first << " - ";
+			}
+			std::cout << "end of followers" << std::endl;
+		}
+		
 		Client(std::string name): followerMap{} {
 			//std::cout << "    welcome to client constructor" << std::endl;
 			username = name;
-			std::string fileName = TIMELINE_PATH + username + TIMELINE_FILE_END;
+			//std::string fileName = TIMELINE_PATH + username + TIMELINE_FILE_END;
 			std::cout << "    try to create safefile" << std::endl;
-			timelineFile = SafeFile(fileName);
+			//timelineFile = SafeFile(fileName);
 			//std::cout << "    leaving client constructor" << std::endl;
-			fileName = FOLLOWERS_PATH + username + FOLLOWERS_FILE_END;
+			std::string fileName = FOLLOWERS_PATH + username + FOLLOWERS_FILE_END;
 			followerFile = SafeFile(fileName);
 
 			//start the follower map
@@ -259,16 +264,16 @@ class Client {
 
 			followerCount = followerMap.size();
 
-			timeline = Timeline(username, &timelineFile);
+			//timeline = Timeline(username, &timelineFile);
 		}
 		
-		Timeline getTimeline() { return timeline; }
+		//Timeline getTimeline() { return timeline; }
 		
 		//void openTimeline() { timelinesOpen++; };
 		//int getTimelinesOpen() { return timelinesOpen; }
 		
 		~Client() {
-			timelineFile.closeStreams();
+			//timelineFile.closeStreams();
 			followerFile.closeStreams();
 
 			followerFile = SafeFile(FOLLOWERS_PATH + username + FOLLOWERS_FILE_END, 1);
@@ -280,14 +285,15 @@ class Client {
 			// timelineFile = SafeFile(TIMELINE_PATH + username + TIMELINE_FILE_END, 1);
 			
 			// for (auto i = getTimeline().timeline.rbegin(); i != getTimeline().timeline.rend(); i++) {
-			// 	auto element = i--;
+			// 	auto element = i;
+			// 	std::cout << "writing " << element->printPost() << "to file" << std::endl;
 				
 			// 	timelineFile.write(element->getUsername() + "\n");
 			// 	timelineFile.write(element->getTimestamp() + "\n");
 			// 	timelineFile.write(element->getText() + "\n");
 			// }
 			
-			timelineFile.closeStreams();
+			// timelineFile.closeStreams();
 			followerFile.closeStreams();
 		}
 

@@ -1,9 +1,0 @@
-johndoe1
-time
-hello world 1
-johndoe2
-time
-hello world 2
-johndoe3
-time
-hello world 3
