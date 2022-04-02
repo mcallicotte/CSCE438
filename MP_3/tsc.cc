@@ -264,7 +264,7 @@ IReply Client::Follow(const std::string& username2) {
     return ire;
 }
 
-IReply Client::UnFollow(const std::string& username2) {
+/*IReply Client::UnFollow(const std::string& username2) {
     Request request;
 
     request.set_username(username);
@@ -288,7 +288,7 @@ IReply Client::UnFollow(const std::string& username2) {
     }
 
     return ire;
-}
+}*/
 
 IReply Client::Login() {
     Request request;
