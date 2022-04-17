@@ -8,6 +8,7 @@
 #include "client.h"
 
 #include "sns.grpc.pb.h"
+#include "coord.grpc.pb.h"
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::ClientReader;
@@ -35,7 +36,7 @@ class Client : public IClient
 {
     public:
         Client(const std::string& hname,
-               const std::string& uname,
+               const int& uname,
                const std::string& p)
             :hostname(hname), username(uname), port(p)
             {}
@@ -45,17 +46,18 @@ class Client : public IClient
         virtual void processTimeline();
     private:
         std::string hostname;
-        std::string username;
+        int username;
         std::string port;
         // You can have an instance of the client stub
         // as a member variable.
         std::unique_ptr<SNSService::Stub> stub_;
+        std::unique_ptr<oc::CoordService::Stub> coordStub;
 
         IReply Login();
         IReply List();
         IReply Follow(const std::string& username2);
         IReply UnFollow(const std::string& username2);
-        void Timeline(const std::string& username);
+        void Timeline(const int& username);
 
 
 };
@@ -63,7 +65,7 @@ class Client : public IClient
 int main(int argc, char** argv) {
 
     std::string hostname = "localhost";
-    std::string username = "default";
+    int username = 0;
     std::string port = "3010";
     int opt = 0;
     while ((opt = getopt(argc, argv, "h:u:p:")) != -1){
@@ -71,7 +73,7 @@ int main(int argc, char** argv) {
             case 'h':
                 hostname = optarg;break;
             case 'u':
-                username = optarg;break;
+                username = std::stoi(optarg);break;
             case 'p':
                 port = optarg;break;
             default:
@@ -98,14 +100,28 @@ int Client::connectTo()
     // Please refer to gRpc tutorial how to create a stub.
 	// ------------------------------------------------------------
     std::string login_info = hostname + ":" + port;
-    stub_ = std::unique_ptr<SNSService::Stub>(SNSService::NewStub(
-               grpc::CreateChannel(
-                    login_info, grpc::InsecureChannelCredentials())));
 
-    IReply ire = Login();
-    if(!ire.grpc_status.ok()) {
-        return -1;
-    }
+    coordStub = std::unique_ptr<oc::CoordService::Stub>(oc::CoordService::NewStub(
+                    grpc::CreateChannel(
+                        login_info, grpc::InsecureChannelCredentials())));
+
+    oc::Request request;
+    request.set_requester(oc::RequesterType::CLIENT);
+    request.set_id(username);
+    oc::Reply reply;
+    ClientContext context;
+
+    Status status = coordStub->Login(&context, request, &reply);
+    std::cout << reply.msg() << std::endl;
+
+    // stub_ = std::unique_ptr<SNSService::Stub>(SNSService::NewStub(
+    //            grpc::CreateChannel(
+    //                 login_info, grpc::InsecureChannelCredentials())));
+
+    // IReply ire = Login();
+    // if(!ire.grpc_status.ok()) {
+    //     return -1;
+    // }
     return 1;
 }
 
@@ -213,7 +229,7 @@ void Client::processTimeline()
 IReply Client::List() {
     //Data being sent to the server
     Request request;
-    request.set_username(username);
+    request.set_username(std::to_string(username));
 
     //Container for the data from the server
     ListReply list_reply;
@@ -242,7 +258,7 @@ IReply Client::List() {
         
 IReply Client::Follow(const std::string& username2) {
     Request request;
-    request.set_username(username);
+    request.set_username(std::to_string(username));
     request.add_arguments(username2);
 
     Reply reply;
@@ -292,7 +308,7 @@ IReply Client::Follow(const std::string& username2) {
 
 IReply Client::Login() {
     Request request;
-    request.set_username(username);
+    request.set_username(std::to_string(username));
     Reply reply;
     ClientContext context;
 
@@ -308,7 +324,7 @@ IReply Client::Login() {
     return ire;
 }
 
-void Client::Timeline(const std::string& username) {
+void Client::Timeline(const int& username) {
     ClientContext context;
 
     std::shared_ptr<ClientReaderWriter<Message, Message>> stream(
@@ -317,11 +333,11 @@ void Client::Timeline(const std::string& username) {
     //Thread used to read chat messages and send them to the server
     std::thread writer([username, stream]() {
             std::string input = "Set Stream";
-            Message m = MakeMessage(username, input);
+            Message m = MakeMessage(std::to_string(username), input);
             stream->Write(m);
             while (1) {
             input = getPostMessage();
-            m = MakeMessage(username, input);
+            m = MakeMessage(std::to_string(username), input);
             stream->Write(m);
             }
             stream->WritesDone();

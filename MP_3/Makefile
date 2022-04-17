@@ -16,12 +16,12 @@ PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
 
-all: system-check tsc tsd 
+all: system-check tsc tso 
 
-tsc: sns.pb.o sns.grpc.pb.o tsc.o
+tsc: coord.pb.o coord.grpc.pb.o sns.pb.o sns.grpc.pb.o tsc.o
 	$(CXX) $^ $(LDFLAGS) -g -o $@
 
-tsd: sns.pb.o sns.grpc.pb.o tsd.o
+tso: coord.pb.o coord.grpc.pb.o tso.o
 	$(CXX) $^ $(LDFLAGS) -g -o $@
 
 .PRECIOUS: %.grpc.pb.cc

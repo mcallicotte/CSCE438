@@ -46,6 +46,11 @@ struct IReply
     std::vector<std::string> followers;
 };
 
+// struct ILogin {
+//     grpc::Status status;
+//     std::string masterInfo;
+// };
+
 class IClient
 {
     public:
