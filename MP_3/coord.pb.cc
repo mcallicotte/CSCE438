@@ -48,8 +48,7 @@ struct ReplyDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT ReplyDefaultTypeInternal _Reply_default_instance_;
 constexpr HeartBeat::HeartBeat(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
-  : timestamp_(nullptr)
-  , sid_(0)
+  : sid_(0)
   , s_type_(0)
 {}
 struct HeartBeatDefaultTypeInternal {
@@ -92,7 +91,6 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_coord_2eproto::offsets[] PROTO
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::oc::HeartBeat, sid_),
   PROTOBUF_FIELD_OFFSET(::oc::HeartBeat, s_type_),
-  PROTOBUF_FIELD_OFFSET(::oc::HeartBeat, timestamp_),
 };
 static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::oc::Request)},
@@ -107,14 +105,12 @@ static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] =
 };
 
 const char descriptor_table_protodef_coord_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\013coord.proto\022\002oc\032\037google/protobuf/times"
-  "tamp.proto\"u\n\007Request\022$\n\trequester\030\001 \001(\016"
-  "2\021.oc.RequesterType\022\023\n\013port_number\030\002 \001(\t"
-  "\022\n\n\002id\030\003 \001(\005\022#\n\013server_type\030\004 \001(\0162\016.oc.S"
-  "erverType\"\024\n\005Reply\022\013\n\003msg\030\001 \001(\t\"g\n\tHeart"
-  "Beat\022\013\n\003sid\030\001 \001(\005\022\036\n\006s_type\030\002 \001(\0162\016.oc.S"
-  "erverType\022-\n\ttimestamp\030\003 \001(\0132\032.google.pr"
-  "otobuf.Timestamp*F\n\nServerType\022\n\n\006MASTER"
+  "\n\013coord.proto\022\002oc\"u\n\007Request\022$\n\trequeste"
+  "r\030\001 \001(\0162\021.oc.RequesterType\022\023\n\013port_numbe"
+  "r\030\002 \001(\t\022\n\n\002id\030\003 \001(\005\022#\n\013server_type\030\004 \001(\016"
+  "2\016.oc.ServerType\"\024\n\005Reply\022\013\n\003msg\030\001 \001(\t\"8"
+  "\n\tHeartBeat\022\013\n\003sid\030\001 \001(\005\022\036\n\006s_type\030\002 \001(\016"
+  "2\016.oc.ServerType*F\n\nServerType\022\n\n\006MASTER"
   "\020\000\022\t\n\005SLAVE\020\001\022\020\n\014SYNCHRONIZER\020\003\022\017\n\013COORD"
   "INATOR\020\004*\'\n\rRequesterType\022\n\n\006CLIENT\020\000\022\n\n"
   "\006SERVER\020\0012j\n\014CoordService\022!\n\005Login\022\013.oc."
@@ -122,13 +118,10 @@ const char descriptor_table_protodef_coord_2eproto[] PROTOBUF_SECTION_VARIABLE(p
   "e\022\r.oc.HeartBeat\032\r.oc.HeartBeat\"\000(\0010\001b\006p"
   "roto3"
   ;
-static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_coord_2eproto_deps[1] = {
-  &::descriptor_table_google_2fprotobuf_2ftimestamp_2eproto,
-};
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_coord_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_coord_2eproto = {
-  false, false, 525, descriptor_table_protodef_coord_2eproto, "coord.proto", 
-  &descriptor_table_coord_2eproto_once, descriptor_table_coord_2eproto_deps, 1, 3,
+  false, false, 445, descriptor_table_protodef_coord_2eproto, "coord.proto", 
+  &descriptor_table_coord_2eproto_once, nullptr, 0, 3,
   schemas, file_default_instances, TableStruct_coord_2eproto::offsets,
   file_level_metadata_coord_2eproto, file_level_enum_descriptors_coord_2eproto, file_level_service_descriptors_coord_2eproto,
 };
@@ -656,19 +649,8 @@ void Reply::InternalSwap(Reply* other) {
 
 class HeartBeat::_Internal {
  public:
-  static const ::PROTOBUF_NAMESPACE_ID::Timestamp& timestamp(const HeartBeat* msg);
 };
 
-const ::PROTOBUF_NAMESPACE_ID::Timestamp&
-HeartBeat::_Internal::timestamp(const HeartBeat* msg) {
-  return *msg->timestamp_;
-}
-void HeartBeat::clear_timestamp() {
-  if (GetArenaForAllocation() == nullptr && timestamp_ != nullptr) {
-    delete timestamp_;
-  }
-  timestamp_ = nullptr;
-}
 HeartBeat::HeartBeat(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
@@ -681,11 +663,6 @@ HeartBeat::HeartBeat(::PROTOBUF_NAMESPACE_ID::Arena* arena,
 HeartBeat::HeartBeat(const HeartBeat& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  if (from._internal_has_timestamp()) {
-    timestamp_ = new ::PROTOBUF_NAMESPACE_ID::Timestamp(*from.timestamp_);
-  } else {
-    timestamp_ = nullptr;
-  }
   ::memcpy(&sid_, &from.sid_,
     static_cast<size_t>(reinterpret_cast<char*>(&s_type_) -
     reinterpret_cast<char*>(&sid_)) + sizeof(s_type_));
@@ -694,9 +671,9 @@ HeartBeat::HeartBeat(const HeartBeat& from)
 
 void HeartBeat::SharedCtor() {
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
-    reinterpret_cast<char*>(&timestamp_) - reinterpret_cast<char*>(this)),
+    reinterpret_cast<char*>(&sid_) - reinterpret_cast<char*>(this)),
     0, static_cast<size_t>(reinterpret_cast<char*>(&s_type_) -
-    reinterpret_cast<char*>(&timestamp_)) + sizeof(s_type_));
+    reinterpret_cast<char*>(&sid_)) + sizeof(s_type_));
 }
 
 HeartBeat::~HeartBeat() {
@@ -708,7 +685,6 @@ HeartBeat::~HeartBeat() {
 
 inline void HeartBeat::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  if (this != internal_default_instance()) delete timestamp_;
 }
 
 void HeartBeat::ArenaDtor(void* object) {
@@ -727,10 +703,6 @@ void HeartBeat::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  if (GetArenaForAllocation() == nullptr && timestamp_ != nullptr) {
-    delete timestamp_;
-  }
-  timestamp_ = nullptr;
   ::memset(&sid_, 0, static_cast<size_t>(
       reinterpret_cast<char*>(&s_type_) -
       reinterpret_cast<char*>(&sid_)) + sizeof(s_type_));
@@ -757,14 +729,6 @@ const char* HeartBeat::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::
           ::PROTOBUF_NAMESPACE_ID::uint64 val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
           _internal_set_s_type(static_cast<::oc::ServerType>(val));
-        } else
-          goto handle_unusual;
-        continue;
-      // .google.protobuf.Timestamp timestamp = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
-          ptr = ctx->ParseMessage(_internal_mutable_timestamp(), ptr);
-          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -810,14 +774,6 @@ failure:
       2, this->_internal_s_type(), target);
   }
 
-  // .google.protobuf.Timestamp timestamp = 3;
-  if (this->_internal_has_timestamp()) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(
-        3, _Internal::timestamp(this), target, stream);
-  }
-
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -833,13 +789,6 @@ size_t HeartBeat::ByteSizeLong() const {
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
-
-  // .google.protobuf.Timestamp timestamp = 3;
-  if (this->_internal_has_timestamp()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *timestamp_);
-  }
 
   // int32 sid = 1;
   if (this->_internal_sid() != 0) {
@@ -874,9 +823,6 @@ void HeartBeat::MergeFrom(const HeartBeat& from) {
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from._internal_has_timestamp()) {
-    _internal_mutable_timestamp()->::PROTOBUF_NAMESPACE_ID::Timestamp::MergeFrom(from._internal_timestamp());
-  }
   if (from._internal_sid() != 0) {
     _internal_set_sid(from._internal_sid());
   }
@@ -903,9 +849,9 @@ void HeartBeat::InternalSwap(HeartBeat* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(HeartBeat, s_type_)
       + sizeof(HeartBeat::s_type_)
-      - PROTOBUF_FIELD_OFFSET(HeartBeat, timestamp_)>(
-          reinterpret_cast<char*>(&timestamp_),
-          reinterpret_cast<char*>(&other->timestamp_));
+      - PROTOBUF_FIELD_OFFSET(HeartBeat, sid_)>(
+          reinterpret_cast<char*>(&sid_),
+          reinterpret_cast<char*>(&other->sid_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata HeartBeat::GetMetadata() const {

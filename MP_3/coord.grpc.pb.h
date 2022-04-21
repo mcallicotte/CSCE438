@@ -57,6 +57,8 @@
 
 namespace oc {
 
+// import "google/protobuf/timestamp.proto";
+//
 class CoordService final {
  public:
   static constexpr char const* service_full_name() {

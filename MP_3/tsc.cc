@@ -114,14 +114,16 @@ int Client::connectTo()
     Status status = coordStub->Login(&context, request, &reply);
     std::cout << reply.msg() << std::endl;
 
-    // stub_ = std::unique_ptr<SNSService::Stub>(SNSService::NewStub(
-    //            grpc::CreateChannel(
-    //                 login_info, grpc::InsecureChannelCredentials())));
+    login_info = hostname + ":" + reply.msg();
 
-    // IReply ire = Login();
-    // if(!ire.grpc_status.ok()) {
-    //     return -1;
-    // }
+    stub_ = std::unique_ptr<SNSService::Stub>(SNSService::NewStub(
+               grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+
+    IReply ire = Login();
+    if(!ire.grpc_status.ok()) {
+        return -1;
+    }
     return 1;
 }
 

@@ -40,12 +40,15 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
+#include <chrono>
 #include <stdlib.h>
 #include <unistd.h>
 #include <google/protobuf/util/time_util.h>
 #include <grpc++/grpc++.h>
 
 #include "sns.grpc.pb.h"
+#include "coord.grpc.pb.h"
 
 using google::protobuf::Timestamp;
 using google::protobuf::Duration;
@@ -232,8 +235,8 @@ class SNSServiceImpl final : public SNSService::Service {
 
 };
 
-void RunServer(std::string port_no) {
-  std::string server_address = "0.0.0.0:"+port_no;
+void RunServer(std::string coordPort, std::string coordIP, std::string myPort, int id, int type) {
+  std::string server_address = "0.0.0.0:"+myPort;
   SNSServiceImpl service;
 
   ServerBuilder builder;
@@ -242,22 +245,75 @@ void RunServer(std::string port_no) {
   std::unique_ptr<Server> server(builder.BuildAndStart());
   std::cout << "Server listening on " << server_address << std::endl;
 
+  oc::Request request;
+  request.set_requester(oc::RequesterType::SERVER);
+  request.set_id(id);
+  request.set_port_number(myPort);
+  if (type) {
+    request.set_server_type(oc::ServerType::SLAVE);
+  } else {
+    request.set_server_type(oc::ServerType::MASTER);
+  }
+  
+  std::string login_info = coordIP + ":" + coordPort;
+
+  std::unique_ptr<oc::CoordService::Stub> coordStub(oc::CoordService::NewStub(
+    grpc::CreateChannel(login_info, grpc::InsecureChannelCredentials())));
+
+  grpc::ClientContext context;
+  oc::Reply reply;
+  Status status = coordStub->Login(&context, request, &reply);
+  std::cout << reply.msg() << std::endl;
+
+  grpc::ClientContext newContext;
+  std::shared_ptr<grpc::ClientReaderWriter<oc::HeartBeat, oc::HeartBeat>> 
+    stream(coordStub->ServerCommunicate(&newContext));
+
+  std::thread heartbeat([stream, request]() {
+    //std::cout << "started heartbeats" << std::endl;
+    oc::HeartBeat beat;
+    beat.set_sid(request.id());
+    beat.set_s_type(request.server_type());
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      stream->Write(beat);
+      //std::cout << request.id() << " heartbeat sent" << std::endl;
+    }
+    stream->WritesDone();
+  });
+
   server->Wait();
 }
 
 int main(int argc, char** argv) {
   
-  std::string port = "3010";
+  
+  std::string coordPort = "3010";
+  std::string coordIP = "localhost";
+  std::string myPort;
+  int id;
+  int type;
+
   int opt = 0;
-  while ((opt = getopt(argc, argv, "p:")) != -1){
+  while ((opt = getopt(argc, argv, "c:o:p:d:t:")) != -1){
     switch(opt) {
+      case 'c':
+        coordIP = optarg;break;
+      case 'o':
+        coordPort = optarg;break;
       case 'p':
-          port = optarg;break;
+        myPort = optarg;break;
+      case 'd':
+        id = std::stoi(optarg);break;
+      case 't':
+        type = std::stoi(optarg);
+        std::cout << "type = " << type << std::endl;
+        break;
       default:
-	  std::cerr << "Invalid Command Line Argument\n";
+	      std::cerr << "Invalid Command Line Argument\n";
     }
   }
-  RunServer(port);
+  RunServer(coordPort, coordIP, myPort, id, type);
 
   return 0;
 }
